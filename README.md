@@ -1,13 +1,12 @@
-## mxd2qgs 
-### Convert ArcGIS mxd file for use in QGIS
+# mxd2qgs 
+### Convert ArcGIS .mxd files for QGIS
 
 Based on Mxd2Qgs for ArcGIS 10 by Allan Maungu (copyright 2011)
-
-Not yet ready for download, under active development.
 
 This utility can be installed as a toolbox in ArcGIS, or run on the command line to convert several files at once
 
 ### Installing in ArcGIS
+Not yet ready for download, under active development.
 TK
 
 ### Use as a Toolbox Script
