@@ -280,75 +280,76 @@ class mxd2qgs(object):
                 maplayer.appendChild(singlesymbol)
 
                 # Create the <symbol> element
-                symbol = self.doc.createElement("symbol")
+                symbol = self.symbol()
                 singlesymbol.appendChild(symbol)
-
-                # Create the <lowervalue> element
-                lowervalue = self.doc.createElement("lowervalue")
-                symbol.appendChild(lowervalue)
-
-                # Create the <uppervalue> element
-                uppervalue = self.doc.createElement("uppervalue")
-                symbol.appendChild(uppervalue)
-
-                # Create the <label> element
-                label = self.doc.createElement("label")
-                symbol.appendChild(label)
-
-                # Create the <rotationclassificationfieldname> element
-                rotationclassificationfieldname = self.doc.createElement("rotationclassificationfieldname")
-                symbol.appendChild(rotationclassificationfieldname)
-
-                # Create the <scaleclassificationfieldname> element
-                scaleclassificationfieldname = self.doc.createElement("scaleclassificationfieldname")
-                symbol.appendChild(scaleclassificationfieldname)
-
-                # Create the <symbolfieldname> element
-                symbolfieldname = self.doc.createElement("symbolfieldname")
-                symbol.appendChild(symbolfieldname)
-
-                 # Create the <outlinecolor> element
-                outlinecolor = self.doc.createElement("outlinecolor")
-                outlinecolor.setAttribute("red", "88")
-                outlinecolor.setAttribute("blue", "99")
-                outlinecolor.setAttribute("green", "37")
-                symbol.appendChild(outlinecolor)
-
-                 # Create the <outlinestyle> element
-                outlinestyle = self.doc.createElement("outlinestyle")
-                outline = self.doc.createTextNode("SolidLine")
-                outlinestyle.appendChild(outline)
-                symbol.appendChild(outlinestyle)
-
-                # Create the <outlinewidth> element
-                outlinewidth = self.doc.createElement("outlinewidth")
-                width = self.doc.createTextNode("0.26")
-                outlinewidth.appendChild(width)
-                symbol.appendChild(outlinewidth)
-
-                # Create the <fillcolor> element
-                # Todo: correct colors"
-                fillcolor = self.doc.createElement("fillcolor")
-                fillcolor.setAttribute("red", "90")
-                fillcolor.setAttribute("blue", "210")
-                fillcolor.setAttribute("green", "229")
-                symbol.appendChild(fillcolor)
-
-                # Create the <fillpattern> element
-                fillpattern = self.doc.createElement("fillpattern")
-                fill = self.doc.createTextNode("SolidPattern")
-                fillpattern.appendChild(fill)
-                symbol.appendChild(fillpattern)
-
-                # Create the <texturepath> element
-                texturepath = self.doc.createElement("texturepath")
-                texturepath.setAttribute("null", "1")
-                symbol.appendChild(texturepath)
 
                 # Append to parent
                 layers.appendChild(maplayer)
 
+            layertree[parent_name].appendChild(treeLayer)
+
         return layers
+
+    def symbol(self):
+        '''Create and populate a dummy symbol element'''
+        symbol = self.doc.createElement("symbol")
+        # Create the <lowervalue> element
+        symbol.appendChild(self.doc.createElement("lowervalue"))
+
+        # Create the <uppervalue> element
+        symbol.appendChild(self.doc.createElement("uppervalue"))
+
+        # Create the <label> element
+        symbol.appendChild(self.doc.createElement("label"))
+
+        # Create the <rotationclassificationfieldname> element
+        rotationclassificationfieldname = self.doc.createElement("rotationclassificationfieldname")
+        symbol.appendChild(rotationclassificationfieldname)
+
+        # Create the <scaleclassificationfieldname> element
+        scaleclassificationfieldname = self.doc.createElement("scaleclassificationfieldname")
+        symbol.appendChild(scaleclassificationfieldname)
+
+        # Create the <symbolfieldname> element
+        symbol.appendChild(self.doc.createElement("symbolfieldname"))
+
+         # Create the <outlinecolor> element
+        outlinecolor = self.doc.createElement("outlinecolor")
+        outlinecolor.setAttribute("red", "88")
+        outlinecolor.setAttribute("blue", "99")
+        outlinecolor.setAttribute("green", "37")
+        symbol.appendChild(outlinecolor)
+
+         # Create the <outlinestyle> element
+        outlinestyle = self.doc.createElement("outlinestyle")
+        outline = self.doc.createTextNode("SolidLine")
+        outlinestyle.appendChild(outline)
+        symbol.appendChild(outlinestyle)
+
+        # Create the <outlinewidth> element
+        outlinewidth = self.doc.createElement("outlinewidth")
+        width = self.doc.createTextNode("0.26")
+        outlinewidth.appendChild(width)
+        symbol.appendChild(outlinewidth)
+
+        # Create the <fillcolor> element
+        # Todo: correct colors"
+        fillcolor = self.doc.createElement("fillcolor")
+        fillcolor.setAttribute("red", "90")
+        fillcolor.setAttribute("blue", "210")
+        fillcolor.setAttribute("green", "229")
+        symbol.appendChild(fillcolor)
+
+        # Create the <fillpattern> element
+        fillpattern = self.doc.createElement("fillpattern")
+        fill = self.doc.createTextNode("SolidPattern")
+        fillpattern.appendChild(fill)
+        symbol.appendChild(fillpattern)
+
+        # Create the <texturepath> element
+        texturepath = self.doc.createElement("texturepath")
+        texturepath.setAttribute("null", "1")
+        symbol.appendChild(texturepath)
 
 if __name__ == '__main__':
     from os import path

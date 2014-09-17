@@ -3,7 +3,9 @@
 
 Based on Mxd2Qgs for ArcGIS 10 by Allan Maungu (copyright 2011)
 
-This utility can be installed as a toolbox in ArcGIS, or run on the command line to convert several files at once
+This utility can be installed as a toolbox in ArcGIS, or run on the command line to convert several files at once.
+
+Note that because of the limits of scripting in ArcGIS, layer symbologies are lost in the conversion
 
 ### Installing in ArcGIS
 Not yet ready for download, under active development.
