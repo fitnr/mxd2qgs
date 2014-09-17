@@ -28,6 +28,7 @@
 
 from xml.dom.minidom import Document
 from datetime import datetime
+from os import path
 import arcpy
 
 
@@ -201,17 +202,40 @@ class mxd2qgs(object):
 
         return legend
 
+    def setlayerprop(self, layer, treeElemName):
+        tree = self.doc.createElement(treeElemName)
+
+        if layer.supports('visible'):
+            if layer.visible:
+                checked = 'Qt::Checked'
+            else:
+                checked = 'Qt::Unchecked'
+
+            tree.setAttribute('checked', checked)
+            tree.setAttribute('name', str(layer.name))
+
+        return tree
+
     def layers(self):
         '''Create the <projectlayers> element'''
         layerlist = arcpy.mapping.ListLayers(self.df)
         layers = self.doc.createElement("projectlayers")
         layers.setAttribute("layercount", str(len(layerlist)))
 
+        # Layer order - create parent and a tracking list for nesting layers
+        layertree = self.doc.createElement('layer-tree-group')
+        treeDict = {'': layertree}
+
         for lyr in layerlist:
-            # Todo: recreate layer order
-            if lyr.isGroupLayer is False:
+            name = str(lyr.name)
+            parent_name = path.basename(path.dirname(lyr.longName))
+
+            if lyr.isGroupLayer:
+                treeLayer = self.setlayerprop(lyr, 'layer-tree-group')
+                treeDict[name] = treeLayer
+
+            else:
                 ds = self.doc.createTextNode(str(lyr.dataSource))
-                name = str(lyr.name)
 
                 # Create the <maplayer> element
                 maplayer = self.doc.createElement("maplayer")
@@ -220,11 +244,20 @@ class mxd2qgs(object):
                 maplayer.setAttribute("minLabelScale", "0")
                 maplayer.setAttribute("maxLabelScale", "1e+08")
 
+                # Create the <id> element
+                # Use date to microsecond to produce unique id, as in QGIS
+                _id = self.doc.createElement("id")
+                _id.appendChild(self.doc.createTextNode(name + str(datetime.now().strftime('%Y%m%d%H%M%S%f'))))
+                maplayer.appendChild(_id)
+
+                treeLayer = self.setlayerprop(lyr, 'layer-tree-layer')
+                treeLayer.setAttribute('id', _id)
+
                 if(lyr.isRasterLayer == True):
                     maplayer.setAttribute("type", "raster")
                     pipe = self.doc.createElement('pipe')
                     rr = self.doc.createElement('rasterrenderer')
-                    rr.setAttribute('opacity') = lyr.transparency / 100.0
+                    rr.setAttribute('opacity', lyr.transparency / 100.0)
                     pipe.appendChild(rr)
                     maplayer.appendChild(pipe)
 
@@ -235,12 +268,6 @@ class mxd2qgs(object):
 
                 maplayer.setAttribute("hasScaleBasedVisibilityFlag", "0")
                 maplayer.setAttribute("scaleBasedLabelVisibilityFlag", "0")
-
-                # Create the <id> element
-                # Use date to microsecond to produce unique id, as in QGIS
-                _id = self.doc.createElement("id")
-                _id.appendChild(self.doc.createTextNode(name + str(datetime.now().strftime('%Y%m%d%H%M%S%f'))))
-                maplayer.appendChild(_id)
 
                 # Create the <datasource> element
                 datasource = self.doc.createElement("datasource")
@@ -352,7 +379,6 @@ class mxd2qgs(object):
         symbol.appendChild(texturepath)
 
 if __name__ == '__main__':
-    from os import path
     from optparse import OptionParser
 
     parser = OptionParser()
