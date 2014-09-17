@@ -27,6 +27,7 @@
 #---------------------------------------------------------------------
 
 from xml.dom.minidom import Document
+from datetime import datetime
 import arcpy
 
 
@@ -49,37 +50,30 @@ class mxd2qgs(object):
         # Dataframe elements
         self.df = arcpy.mapping.ListDataFrames(self.mxd).pop()
 
-        # Layerlist elements
-        self.lyrlist = arcpy.mapping.ListLayers(self.df)
-
     def convert(self, output):
         '''Run conversion and write to a file'''
-        try:
-            # Create the <qgis> base element
-            qgis = self.doc.createElement("qgis")
-            qgis.setAttribute("projectname", " ")
-            qgis.setAttribute("version", "1.6.0-Capiapo")
-            self.doc.appendChild(qgis)
+        # Create the <qgis> base element
+        qgis = self.doc.createElement("qgis")
+        qgis.setAttribute("projectname", " ")
+        qgis.setAttribute("version", "1.6.0-Capiapo")
+        self.doc.appendChild(qgis)
 
-            # Create the <title> element
-            title = self.doc.createElement("title")
-            qgis.appendChild(title)
+        # Create the <title> element
+        title = self.doc.createElement("title")
+        qgis.appendChild(title)
 
-            canvas = self.canvas()
-            qgis.appendChild(canvas)
+        canvas = self.canvas()
+        qgis.appendChild(canvas)
 
-            legend = self.legend()
-            qgis.appendChild(legend)
+        legend = self.legend()
+        qgis.appendChild(legend)
 
-            layers = self.layers()
-            qgis.appendChild(layers)
+        layers = self.layers()
+        qgis.appendChild(layers)
 
-            # Write to qgis file
-            with open(output, "w") as f:
-                f.write(self.doc.toxml())
-
-        except Exception, e:
-            raise e
+        # Write to qgis file
+        with open(output, "w") as f:
+            f.write(self.doc.toxml())
 
     def canvas(self):
         '''Create the <mapcanvas> element'''
@@ -175,11 +169,13 @@ class mxd2qgs(object):
         geographicflag.appendChild(self.doc.createTextNode("true"))
         spatialrefsys.appendChild(geographicflag)
 
+        return spatialrefsys
+
     def legend(self):
         '''Create the <legend> element'''
         legend = self.doc.createElement("legend")
 
-        for lyr in self.lyrlist:
+        for lyr in arcpy.mapping.ListLayers(self.df):
             if (lyr.isGroupLayer == False):
 
                 # Create the <legendlayer> element
@@ -207,18 +203,15 @@ class mxd2qgs(object):
 
     def layers(self):
         '''Create the <projectlayers> element'''
+        layerlist = arcpy.mapping.ListLayers(self.df)
         layers = self.doc.createElement("projectlayers")
-        layers.setAttribute("layercount", str(len(self.lyrlist)))
+        layers.setAttribute("layercount", str(len(layerlist)))
 
-        for lyr in self.lyrlist:
-
-            if (lyr.isGroupLayer == False and lyr.isRasterLayer == False):
-                geometry1 = arcpy.Describe(lyr)
-                geometry2 = str(geometry1.shapeType)
+        for lyr in layerlist:
+            # Todo: recreate layer order
+            if lyr.isGroupLayer is False:
                 ds = self.doc.createTextNode(str(lyr.dataSource))
-
-                name1 = self.doc.createTextNode(str(lyr.name) + str(20110427170816078))
-                name2 = self.doc.createTextNode(str(lyr.name))
+                name = str(lyr.name)
 
                 # Create the <maplayer> element
                 maplayer = self.doc.createElement("maplayer")
@@ -226,19 +219,27 @@ class mxd2qgs(object):
                 maplayer.setAttribute("maximumScale", "1e+08")
                 maplayer.setAttribute("minLabelScale", "0")
                 maplayer.setAttribute("maxLabelScale", "1e+08")
-                maplayer.setAttribute("geometry", geometry2)
 
                 if(lyr.isRasterLayer == True):
                     maplayer.setAttribute("type", "raster")
-                else:
+                    pipe = self.doc.createElement('pipe')
+                    rr = self.doc.createElement('rasterrenderer')
+                    rr.setAttribute('opacity') = lyr.transparency / 100.0
+                    pipe.appendChild(rr)
+                    maplayer.appendChild(pipe)
+
+                else:  # Is Vector
+                    geotype = str(arcpy.Describe(lyr).shapeType)
+                    maplayer.setAttribute("geometry", geotype)
                     maplayer.setAttribute("type", "vector")
 
                 maplayer.setAttribute("hasScaleBasedVisibilityFlag", "0")
                 maplayer.setAttribute("scaleBasedLabelVisibilityFlag", "0")
 
                 # Create the <id> element
+                # Use date to microsecond to produce unique id, as in QGIS
                 _id = self.doc.createElement("id")
-                _id.appendChild(name1)
+                _id.appendChild(self.doc.createTextNode(name + str(datetime.now().strftime('%Y%m%d%H%M%S%f'))))
                 maplayer.appendChild(_id)
 
                 # Create the <datasource> element
@@ -248,7 +249,7 @@ class mxd2qgs(object):
 
                 # Create the <layername> element
                 layername = self.doc.createElement("layername")
-                layername.appendChild(name2)
+                layername.appendChild(self.doc.createTextNode(name))
                 maplayer.appendChild(layername)
 
                 # Create the <srs> element
@@ -260,8 +261,7 @@ class mxd2qgs(object):
 
                 # Create the <transparencyLevelInt> element
                 transparencyLevelInt = self.doc.createElement("transparencyLevelInt")
-                transparency2 = self.doc.createTextNode("255")
-                transparencyLevelInt.appendChild(transparency2)
+                transparencyLevelInt.appendChild(self.doc.createTextNode("255"))
                 maplayer.appendChild(transparencyLevelInt)
 
                 # Create the <customproperties> element
@@ -360,15 +360,11 @@ if __name__ == '__main__':
 
     options, args = parser.parse_args()
 
-    try:
-        m2q = mxd2qgs(options.mxd)
+    m2q = mxd2qgs(options.mxd)
 
-        # If no --qgs opt is passed, use the same path, just replace the file suffix
-        output = options.qgs or path.join(path.dirname(options.mxd), path.basename(options.mxd)[:-3] + 'qgs')
+    # If no --qgs opt is passed, use the same path, just replace the file suffix
+    output = options.qgs or path.join(path.dirname(options.mxd), path.basename(options.mxd)[:-3] + 'qgs')
 
-        m2q.convert(options.qgs)
+    m2q.convert(options.qgs)
 
-        print 'Converted', options.mxd, 'to', options.qgs
-
-    except Exception, e:
-        raise e
+    print 'Converted', options.mxd, 'to', options.qgs
