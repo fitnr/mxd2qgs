@@ -1,10 +1,9 @@
 #-----------------------------------------------------------
 #
 # Mxd2Qgs ver 1.0
-# Copyright (C) 2011 Allan Maungu
-# EMAIL: lumtegis (at) gmail.com
-# WEB  : http://geoscripting.blogspot.com
-# Usage : Exporting current ArcMap document layers to Quantum GIS file
+# Copyright (C) 2011 Allan Maungu, 2014 Neil Freeman
+# https://github.com/fitnr/mxd2qgs
+# Converts ArcMap documents to .qgs format
 # The resulting file can be opened in Quantum GIS
 # Tested on ArcMap 10, Python 2.6.5 and Quantum GIS 1.6.0
 #-----------------------------------------------------------
