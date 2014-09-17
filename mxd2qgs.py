@@ -34,16 +34,20 @@ class mxd2qgs(object):
 
     """Conversion wrapper"""
 
-    def __init__(self, mxdfile):
+    def __init__(self, mxdfile=None):
         # Assign the input file
         mxdfile = mxdfile or "CURRENT"
-        self.mxd = arcpy.mapping.MapDocument(mxdfile)
+        try:
+            self.mxd = arcpy.mapping.MapDocument(mxdfile)
+        except AssertionError, e:
+            print('error importing', mxdfile)
+            raise e
 
         # Create the minidom
         self.doc = Document()
 
         # Dataframe elements
-        self.df = arcpy.mapping.ListDataFrames(self.mxd)[0]
+        self.df = arcpy.mapping.ListDataFrames(self.mxd).pop()
 
         # Layerlist elements
         self.lyrlist = arcpy.mapping.ListLayers(self.df)
@@ -347,14 +351,24 @@ class mxd2qgs(object):
         return layers
 
 if __name__ == '__main__':
-    print 'Converting mxd........'
+    from os import path
+    from optparse import OptionParser
 
-    infile = None
+    parser = OptionParser()
+    parser.add_option("-m", "--mxd", dest="mxd", help="input ArcGIS file")
+    parser.add_option("-q", "--qgs", dest="qgs", help="destination QGIS file")
 
-    m2q = mxd2qgs(infile)
+    options, args = parser.parse_args()
 
-    # Read input parameters from GP dialog
-    outfile = arcpy.GetParameterAsText(0)
-    m2q.convert(outfile)
+    try:
+        m2q = mxd2qgs(options.mxd)
 
-    print 'Done'
+        # If no --qgs opt is passed, use the same path, just replace the file suffix
+        output = options.qgs or path.join(path.dirname(options.mxd), path.basename(options.mxd)[:-3] + 'qgs')
+
+        m2q.convert(options.qgs)
+
+        print 'Converted', options.mxd, 'to', options.qgs
+
+    except Exception, e:
+        raise e
