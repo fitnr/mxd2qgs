@@ -1,11 +1,11 @@
-#-----------------------------------------------------------
 #
-# Mxd2Qgs ver 1.0
+# mxd2qgs
 # Copyright (C) 2011 Allan Maungu, 2014 Neil Freeman
 # https://github.com/fitnr/mxd2qgs
 # Converts ArcMap documents to .qgs format
 # The resulting file can be opened in Quantum GIS
 # Tested on ArcMap 10, Python 2.6.5 and Quantum GIS 1.6.0
+#
 #-----------------------------------------------------------
 #
 # licensed under the terms of GNU GPL 2
@@ -26,369 +26,326 @@
 #
 #---------------------------------------------------------------------
 
-# Import system modules
 from xml.dom.minidom import Document
-import xml.dom.ext
-import string
-import os
 import arcpy
 
-# Read input parameters from GP dialog
-output = arcpy.GetParameterAsText(0)
-
-# Create an output qgs file
-f = open(output, "w")
-
-# Create the minidom
-doc = Document()
-
-# Create the <qgis> base element
-qgis = doc.createElement("qgis")
-qgis.setAttribute("projectname", " ")
-qgis.setAttribute("version", "1.6.0-Capiapo")
-doc.appendChild(qgis)
-
-# Create the <title> element
-title = doc.createElement("title")
-qgis.appendChild(title)
-
-# Assign current document
-mxd = arcpy.mapping.MapDocument("CURRENT")
-
-print 'Converting mxd........'
-
-# Dataframe elements
-
-df = arcpy.mapping.ListDataFrames(mxd)[0]
-unit = doc.createTextNode(df.mapUnits)
-xmin1 = doc.createTextNode(str(df.extent.XMin))
-ymin1 = doc.createTextNode(str(df.extent.YMin))
-xmax1 = doc.createTextNode(str(df.extent.XMax))
-ymax1 = doc.createTextNode(str(df.extent.YMax))
-# srsid = doc.createTextNode
-srid1 = doc.createTextNode(str(df.spatialReference.factoryCode))
-srid2 = doc.createTextNode(str(df.spatialReference.factoryCode))
-epsg1 = doc.createTextNode(str(df.spatialReference.factoryCode))
-epsg2 = doc.createTextNode(str(df.spatialReference.factoryCode))
-description1 = doc.createTextNode(str(df.spatialReference.name))
-description2 = doc.createTextNode(str(df.spatialReference.name))
-ellipsoidacronym1 = doc.createTextNode(str(df.spatialReference.name))
-ellipsoidacronym2 = doc.createTextNode(str(df.spatialReference.name))
-geographicflag1 = doc.createTextNode("true")
-geographicflag2 = doc.createTextNode("true")
-
-authid2 = doc.createTextNode("EPSG:" + str(df.spatialReference.factoryCode))
-authid3 = doc.createTextNode("EPSG:" + str(df.spatialReference.factoryCode))
-
-# Layerlist elements
-lyrlist = arcpy.mapping.ListLayers(df)
-count1 = str(len(lyrlist))
-
-
-def map_canvas():
-    # Create the <mapcanvas> element
-    mapcanvas = doc.createElement("mapcanvas")
-    qgis.appendChild(mapcanvas)
-
-    # Create the <units> element
-    units = doc.createElement("units")
-    units.appendChild(unit)
-    mapcanvas.appendChild(units)
-
-    # Create the <extent> element
-    extent = doc.createElement("extent")
-    mapcanvas.appendChild(extent)
-
-    # Create the <xmin> element
-    xmin = doc.createElement("xmin")
-    xmin.appendChild(xmin1)
-    extent.appendChild(xmin)
-
-    # Create the <ymin> element
-    ymin = doc.createElement("ymin")
-    ymin.appendChild(ymin1)
-    extent.appendChild(ymin)
-
-    # Create the <xmax> element
-    xmax = doc.createElement("xmax")
-    xmax.appendChild(xmax1)
-    extent.appendChild(xmax)
-
-    # Create the <ymax> element
-    ymax = doc.createElement("ymax")
-    ymax.appendChild(ymax1)
-    extent.appendChild(ymax)
-
-    # Create the <projections> element
-    projections = doc.createElement("projections")
-    mapcanvas.appendChild(projections)
-
-    # Create the <destinationsrs> element
-    destinationsrs = doc.createElement("destinationsrs")
-    mapcanvas.appendChild(destinationsrs)
-
-    # Create the <spatialrefsys> element
-    spatialrefsys = doc.createElement("spatialrefsys")
-    destinationsrs.appendChild(spatialrefsys)
-
-    # Create the <proj4> element
-    proj4 = doc.createElement("proj4")
-    spatialrefsys.appendChild(proj4)
-
-    # Create the <srsid> element
-    srsid = doc.createElement("srsid")
-    spatialrefsys.appendChild(srsid)
-
-    # Create the <srid> element
-    srid = doc.createElement("srid")
-    srid.appendChild(srid1)
-    spatialrefsys.appendChild(srid)
-
-    # Create the <authid> element
-    authid = doc.createElement("authid")
-    authid.appendChild(authid2)
-    spatialrefsys.appendChild(authid)
-
-    # Create the <description> element
-    description = doc.createElement("description")
-    description.appendChild(description1)
-    spatialrefsys.appendChild(description)
-
-    # Create the <projectionacronym> element
-    projectionacronym = doc.createElement("projectionacronym")
-    spatialrefsys.appendChild(projectionacronym)
-
-    # Create the <ellipsoidacronym element
-    ellipsoidacronym = doc.createElement("ellipsoidacronym")
-    ellipsoidacronym.appendChild(ellipsoidacronym1)
-    spatialrefsys.appendChild(ellipsoidacronym)
-
-    # Create the <geographicflag> element
-    geographicflag = doc.createElement("geographicflag")
-    geographicflag.appendChild(geographicflag1)
-    spatialrefsys.appendChild(geographicflag)
-
-
-def legend_func():
-
-    # Create the <legend> element
-    legend = doc.createElement("legend")
-    qgis.appendChild(legend)
-
-    for lyr in lyrlist:
-        if(lyr.isGroupLayer == False):
-
-            # Create the <legendlayer> element
-            legendlayer = doc.createElement("legendlayer")
-            legendlayer.setAttribute("open", "true")
-            legendlayer.setAttribute("checked", "Qt::Checked")
-            legendlayer.setAttribute("name", str(lyr.name))
-
-            legend.appendChild(legendlayer)
-
-            # Create the <filegroup> element
-            filegroup = doc.createElement("filegroup")
-            filegroup.setAttribute("open", "true")
-            filegroup.setAttribute("hidden", "false")
-            legendlayer.appendChild(filegroup)
-
-            # Create the <legendlayerfile> element
-            legendlayerfile = doc.createElement("legendlayerfile")
-            legendlayerfile.setAttribute("isInOverview", "0")
-            legendlayerfile.setAttribute("layerid", str(lyr.name) + str(20110427170816078))
-            legendlayerfile.setAttribute("visible", "1")
-            filegroup.appendChild(legendlayerfile)
-
-
-def project_layers():
-
-    # Create the <projectlayers> element
-    projectlayers = doc.createElement("projectlayers")
-    projectlayers.setAttribute("layercount", count1)
-    qgis.appendChild(projectlayers)
-
-    for lyr in lyrlist:
-
-        if(lyr.isGroupLayer == False and lyr.isRasterLayer == False):
-            geometry1 = arcpy.Describe(lyr)
-            geometry2 = str(geometry1.shapeType)
-            ds = doc.createTextNode(str(lyr.dataSource))
-
-            name1 = doc.createTextNode(str(lyr.name) + str(20110427170816078))
-            name2 = doc.createTextNode(str(lyr.name))
-
-           # Create the <maplayer> element
-            maplayer = doc.createElement("maplayer")
-            maplayer.setAttribute("minimumScale", "0")
-            maplayer.setAttribute("maximumScale", "1e+08")
-            maplayer.setAttribute("minLabelScale", "0")
-            maplayer.setAttribute("maxLabelScale", "1e+08")
-            maplayer.setAttribute("geometry", geometry2)
-            if(lyr.isRasterLayer == True):
-                maplayer.setAttribute("type", "raster")
-            else:
-                maplayer.setAttribute("type", "vector")
-            maplayer.setAttribute("hasScaleBasedVisibilityFlag", "0")
-            maplayer.setAttribute("scaleBasedLabelVisibilityFlag", "0")
-            projectlayers.appendChild(maplayer)
-
-            # Create the <id> element
-            id = doc.createElement("id")
-            id.appendChild(name1)
-            maplayer.appendChild(id)
-
-            # Create the <datasource> element
-            datasource = doc.createElement("datasource")
-            datasource.appendChild(ds)
-            maplayer.appendChild(datasource)
-
-            # Create the <layername> element
-            layername = doc.createElement("layername")
-            layername.appendChild(name2)
-            maplayer.appendChild(layername)
-
-            # Create the <srs> element
-            srs = doc.createElement("srs")
-            maplayer.appendChild(srs)
-
-            # Create the <spatialrefsys> element
-            spatialrefsys = doc.createElement("spatialrefsys")
-            srs.appendChild(spatialrefsys)
-
-            # Create the <proj4> element
-            proj4 = doc.createElement("proj4")
-            spatialrefsys.appendChild(proj4)
-
-            # Create the <srsid> element
-            srsid = doc.createElement("srsid")
-            spatialrefsys.appendChild(srsid)
-
-            # Create the <srid> element
-            srid = doc.createElement("srid")
-            srid.appendChild(srid2)
-            spatialrefsys.appendChild(srid)
-
-            # Create the <authid> element
-            authid = doc.createElement("authid")
-            authid.appendChild(authid3)
-            spatialrefsys.appendChild(authid)
-
-            # Create the <description> element
-            description = doc.createElement("description")
-            description.appendChild(description2)
-            spatialrefsys.appendChild(description)
-
-            # Create the <projectionacronym> element
-            projectionacronym = doc.createElement("projectionacronym")
-            spatialrefsys.appendChild(projectionacronym)
-
-            # Create the <ellipsoidacronym element
-            ellipsoidacronym = doc.createElement("ellipsoidacronym")
-            ellipsoidacronym.appendChild(ellipsoidacronym2)
-            spatialrefsys.appendChild(ellipsoidacronym)
-
-            # Create the <geographicflag> element
-            geographicflag = doc.createElement("geographicflag")
-            geographicflag.appendChild(geographicflag2)
-            spatialrefsys.appendChild(geographicflag)
-
-            # Create the <transparencyLevelInt> element
-            transparencyLevelInt = doc.createElement("transparencyLevelInt")
-            transparency2 = doc.createTextNode("255")
-            transparencyLevelInt.appendChild(transparency2)
-            maplayer.appendChild(transparencyLevelInt)
-
-            # Create the <customproperties> element
-            customproperties = doc.createElement("customproperties")
-            maplayer.appendChild(customproperties)
-
-            # Create the <provider> element
-            provider = doc.createElement("provider")
-            provider.setAttribute("encoding", "System")
-            ogr = doc.createTextNode("ogr")
-            provider.appendChild(ogr)
-            maplayer.appendChild(provider)
-
-            # Create the <singlesymbol> element
-            singlesymbol = doc.createElement("singlesymbol")
-            maplayer.appendChild(singlesymbol)
-
-            # Create the <symbol> element
-            symbol = doc.createElement("symbol")
-            singlesymbol.appendChild(symbol)
-
-            # Create the <lowervalue> element
-            lowervalue = doc.createElement("lowervalue")
-            symbol.appendChild(lowervalue)
-
-            # Create the <uppervalue> element
-            uppervalue = doc.createElement("uppervalue")
-            symbol.appendChild(uppervalue)
-
-            # Create the <label> element
-            label = doc.createElement("label")
-            symbol.appendChild(label)
-
-            # Create the <rotationclassificationfieldname> element
-            rotationclassificationfieldname = doc.createElement("rotationclassificationfieldname")
-            symbol.appendChild(rotationclassificationfieldname)
-
-            # Create the <scaleclassificationfieldname> element
-            scaleclassificationfieldname = doc.createElement("scaleclassificationfieldname")
-            symbol.appendChild(scaleclassificationfieldname)
-
-            # Create the <symbolfieldname> element
-            symbolfieldname = doc.createElement("symbolfieldname")
-            symbol.appendChild(symbolfieldname)
-
-             # Create the <outlinecolor> element
-            outlinecolor = doc.createElement("outlinecolor")
-            outlinecolor.setAttribute("red", "88")
-            outlinecolor.setAttribute("blue", "99")
-            outlinecolor.setAttribute("green", "37")
-            symbol.appendChild(outlinecolor)
-
-             # Create the <outlinestyle> element
-            outlinestyle = doc.createElement("outlinestyle")
-            outline = doc.createTextNode("SolidLine")
-            outlinestyle.appendChild(outline)
-            symbol.appendChild(outlinestyle)
-
-             # Create the <outlinewidth> element
-            outlinewidth = doc.createElement("outlinewidth")
-            width = doc.createTextNode("0.26")
-            outlinewidth.appendChild(width)
-            symbol.appendChild(outlinewidth)
-
-             # Create the <fillcolor> element
-            fillcolor = doc.createElement("fillcolor")
-            fillcolor.setAttribute("red", "90")
-            fillcolor.setAttribute("blue", "210")
-            fillcolor.setAttribute("green", "229")
-            symbol.appendChild(fillcolor)
-
-             # Create the <fillpattern> element
-            fillpattern = doc.createElement("fillpattern")
-            fill = doc.createTextNode("SolidPattern")
-            fillpattern.appendChild(fill)
-            symbol.appendChild(fillpattern)
-
-             # Create the <texturepath> element
-            texturepath = doc.createElement("texturepath")
-            texturepath.setAttribute("null", "1")
-            symbol.appendChild(texturepath)
-
-
-map_canvas()
-legend_func()
-project_layers()
-
-
-#  Write to qgis file
-
-try:
-    xml.dom.ext.PrettyPrint(doc, f)
-finally:
-    f.close()
-
-print 'Done'
+
+class mxd2qgs(object):
+
+    """Conversion wrapper"""
+
+    def __init__(self, mxdfile):
+        # Assign the input file
+        mxdfile = mxdfile or "CURRENT"
+        self.mxd = arcpy.mapping.MapDocument(mxdfile)
+
+        # Create the minidom
+        self.doc = Document()
+
+        # Create the <qgis> base element
+        self.qgis = self.doc.createElement("qgis")
+        self.qgis.setAttribute("projectname", " ")
+        self.qgis.setAttribute("version", "1.6.0-Capiapo")
+        self.doc.appendChild(self.qgis)
+
+        # Create the <title> element
+        title = self.doc.createElement("title")
+        self.qgis.appendChild(title)
+
+        # Dataframe elements
+        self.df = arcpy.mapping.ListDataFrames(self.mxd)[0]
+
+        # Layerlist elements
+        self.lyrlist = arcpy.mapping.ListLayers(self.df)
+
+    def convert(self, output):
+        self.map_canvas()
+        self.legend_func()
+        self.project_layers()
+
+        # Write to qgis file
+        with open(output, "w") as f:
+            f.write(self.doc.toxml())
+
+    def map_canvas(self):
+        # Create the <mapcanvas> element
+        mapcanvas = self.doc.createElement("mapcanvas")
+        self.qgis.appendChild(mapcanvas)
+
+        # Create the <units> element
+        unit = self.doc.createTextNode(self.df.mapUnits)
+
+        units = self.doc.createElement("units")
+        units.appendChild(unit)
+        mapcanvas.appendChild(units)
+
+        # Create the <extent> element
+        extent = self.doc.createElement("extent")
+        mapcanvas.appendChild(extent)
+
+        xmin1 = self.doc.createTextNode(str(self.df.extent.XMin))
+        ymin1 = self.doc.createTextNode(str(self.df.extent.YMin))
+        xmax1 = self.doc.createTextNode(str(self.df.extent.XMax))
+        ymax1 = self.doc.createTextNode(str(self.df.extent.YMax))
+
+        # Create the <xmin> element
+        xmin = self.doc.createElement("xmin")
+        xmin.appendChild(xmin1)
+        extent.appendChild(xmin)
+
+        # Create the <ymin> element
+        ymin = self.doc.createElement("ymin")
+        ymin.appendChild(ymin1)
+        extent.appendChild(ymin)
+
+        # Create the <xmax> element
+        xmax = self.doc.createElement("xmax")
+        xmax.appendChild(xmax1)
+        extent.appendChild(xmax)
+
+        # Create the <ymax> element
+        ymax = self.doc.createElement("ymax")
+        ymax.appendChild(ymax1)
+        extent.appendChild(ymax)
+
+        # Create the <projections> element
+        projections = self.doc.createElement("projections")
+        mapcanvas.appendChild(projections)
+
+        # Create the <destinationsrs> element
+        destinationsrs = self.doc.createElement("destinationsrs")
+        mapcanvas.appendChild(destinationsrs)
+
+        # Create the <spatialrefsys> element
+        spatialrefsys = self.generate_spatial()
+        destinationsrs.appendChild(spatialrefsys)
+
+    def generate_spatial(self):
+        spatialrefsys = self.doc.createElement("spatialrefsys")
+
+        # Create the <proj4> element
+        proj4 = self.doc.createElement("proj4")
+        spatialrefsys.appendChild(proj4)
+
+        # Create the <srsid> element
+        srsid = self.doc.createElement("srsid")
+        spatialrefsys.appendChild(srsid)
+
+        # Create the <srid> element
+        mxd_srid = self.doc.createTextNode(str(self.df.spatialReference.factoryCode))
+        srid = self.doc.createElement("srid")
+        srid.appendChild(mxd_srid)
+        spatialrefsys.appendChild(srid)
+
+        # Create the <authid> element
+        mxd_authid = self.doc.createTextNode("EPSG:" + str(self.df.spatialReference.factoryCode))
+        authid = self.doc.createElement("authid")
+        authid.appendChild(mxd_authid)
+        spatialrefsys.appendChild(authid)
+
+        # Create the <description> element
+        max_d = self.doc.createTextNode(str(self.df.spatialReference.name))
+        description = self.doc.createElement("description")
+        description.appendChild(max_d)
+        spatialrefsys.appendChild(description)
+
+        # Create the <projectionacronym> element
+        projectionacronym = self.doc.createElement("projectionacronym")
+        spatialrefsys.appendChild(projectionacronym)
+
+        # Create the <ellipsoidacronym element
+        ea = self.doc.createTextNode(str(self.df.spatialReference.name))
+        ellipsoidacronym = self.doc.createElement("ellipsoidacronym")
+        ellipsoidacronym.appendChild(ea)
+        spatialrefsys.appendChild(ellipsoidacronym)
+
+        # Create the <geographicflag> element
+        geographicflag = self.doc.createElement("geographicflag")
+        geographicflag.appendChild(self.doc.createTextNode("true"))
+        spatialrefsys.appendChild(geographicflag)
+
+    def legend_func(self):
+
+        # Create the <legend> element
+        legend = self.doc.createElement("legend")
+        self.qgis.appendChild(legend)
+
+        for lyr in self.lyrlist:
+            if(lyr.isGroupLayer == False):
+
+                # Create the <legendlayer> element
+                legendlayer = self.doc.createElement("legendlayer")
+                legendlayer.setAttribute("open", "true")
+                legendlayer.setAttribute("checked", "Qt::Checked")
+                legendlayer.setAttribute("name", str(lyr.name))
+
+                legend.appendChild(legendlayer)
+
+                # Create the <filegroup> element
+                filegroup = self.doc.createElement("filegroup")
+                filegroup.setAttribute("open", "true")
+                filegroup.setAttribute("hidden", "false")
+                legendlayer.appendChild(filegroup)
+
+                # Create the <legendlayerfile> element
+                legendlayerfile = self.doc.createElement("legendlayerfile")
+                legendlayerfile.setAttribute("isInOverview", "0")
+                legendlayerfile.setAttribute("layerid", str(lyr.name) + str(20110427170816078))
+                legendlayerfile.setAttribute("visible", "1")
+                filegroup.appendChild(legendlayerfile)
+
+    def project_layers(self):
+        count1 = str(len(self.lyrlist))
+
+        # Create the <projectlayers> element
+        projectlayers = self.doc.createElement("projectlayers")
+        projectlayers.setAttribute("layercount", count1)
+        self.qgis.appendChild(projectlayers)
+
+        for lyr in self.lyrlist:
+
+            if(lyr.isGroupLayer == False and lyr.isRasterLayer == False):
+                geometry1 = arcpy.Describe(lyr)
+                geometry2 = str(geometry1.shapeType)
+                ds = self.doc.createTextNode(str(lyr.dataSource))
+
+                name1 = self.doc.createTextNode(str(lyr.name) + str(20110427170816078))
+                name2 = self.doc.createTextNode(str(lyr.name))
+
+                # Create the <maplayer> element
+                maplayer = self.doc.createElement("maplayer")
+                maplayer.setAttribute("minimumScale", "0")
+                maplayer.setAttribute("maximumScale", "1e+08")
+                maplayer.setAttribute("minLabelScale", "0")
+                maplayer.setAttribute("maxLabelScale", "1e+08")
+                maplayer.setAttribute("geometry", geometry2)
+
+                if(lyr.isRasterLayer == True):
+                    maplayer.setAttribute("type", "raster")
+                else:
+                    maplayer.setAttribute("type", "vector")
+
+                maplayer.setAttribute("hasScaleBasedVisibilityFlag", "0")
+                maplayer.setAttribute("scaleBasedLabelVisibilityFlag", "0")
+                projectlayers.appendChild(maplayer)
+
+                # Create the <id> element
+                _id = self.doc.createElement("id")
+                _id.appendChild(name1)
+                maplayer.appendChild(_id)
+
+                # Create the <datasource> element
+                datasource = self.doc.createElement("datasource")
+                datasource.appendChild(ds)
+                maplayer.appendChild(datasource)
+
+                # Create the <layername> element
+                layername = self.doc.createElement("layername")
+                layername.appendChild(name2)
+                maplayer.appendChild(layername)
+
+                # Create the <srs> element
+                srs = self.doc.createElement("srs")
+                maplayer.appendChild(srs)
+
+                spatialrefsys = self.generate_spatial()
+                srs.appendChild(spatialrefsys)
+
+                # Create the <transparencyLevelInt> element
+                transparencyLevelInt = self.doc.createElement("transparencyLevelInt")
+                transparency2 = self.doc.createTextNode("255")
+                transparencyLevelInt.appendChild(transparency2)
+                maplayer.appendChild(transparencyLevelInt)
+
+                # Create the <customproperties> element
+                customproperties = self.doc.createElement("customproperties")
+                maplayer.appendChild(customproperties)
+
+                # Create the <provider> element
+                provider = self.doc.createElement("provider")
+                provider.setAttribute("encoding", "System")
+                ogr = self.doc.createTextNode("ogr")
+                provider.appendChild(ogr)
+                maplayer.appendChild(provider)
+
+                # Create the <singlesymbol> element
+                singlesymbol = self.doc.createElement("singlesymbol")
+                maplayer.appendChild(singlesymbol)
+
+                # Create the <symbol> element
+                symbol = self.doc.createElement("symbol")
+                singlesymbol.appendChild(symbol)
+
+                # Create the <lowervalue> element
+                lowervalue = self.doc.createElement("lowervalue")
+                symbol.appendChild(lowervalue)
+
+                # Create the <uppervalue> element
+                uppervalue = self.doc.createElement("uppervalue")
+                symbol.appendChild(uppervalue)
+
+                # Create the <label> element
+                label = self.doc.createElement("label")
+                symbol.appendChild(label)
+
+                # Create the <rotationclassificationfieldname> element
+                rotationclassificationfieldname = self.doc.createElement("rotationclassificationfieldname")
+                symbol.appendChild(rotationclassificationfieldname)
+
+                # Create the <scaleclassificationfieldname> element
+                scaleclassificationfieldname = self.doc.createElement("scaleclassificationfieldname")
+                symbol.appendChild(scaleclassificationfieldname)
+
+                # Create the <symbolfieldname> element
+                symbolfieldname = self.doc.createElement("symbolfieldname")
+                symbol.appendChild(symbolfieldname)
+
+                 # Create the <outlinecolor> element
+                outlinecolor = self.doc.createElement("outlinecolor")
+                outlinecolor.setAttribute("red", "88")
+                outlinecolor.setAttribute("blue", "99")
+                outlinecolor.setAttribute("green", "37")
+                symbol.appendChild(outlinecolor)
+
+                 # Create the <outlinestyle> element
+                outlinestyle = self.doc.createElement("outlinestyle")
+                outline = self.doc.createTextNode("SolidLine")
+                outlinestyle.appendChild(outline)
+                symbol.appendChild(outlinestyle)
+
+                 # Create the <outlinewidth> element
+                outlinewidth = self.doc.createElement("outlinewidth")
+                width = self.doc.createTextNode("0.26")
+                outlinewidth.appendChild(width)
+                symbol.appendChild(outlinewidth)
+
+                 # Create the <fillcolor> element
+                fillcolor = self.doc.createElement("fillcolor")
+                fillcolor.setAttribute("red", "90")
+                fillcolor.setAttribute("blue", "210")
+                fillcolor.setAttribute("green", "229")
+                symbol.appendChild(fillcolor)
+
+                 # Create the <fillpattern> element
+                fillpattern = self.doc.createElement("fillpattern")
+                fill = self.doc.createTextNode("SolidPattern")
+                fillpattern.appendChild(fill)
+                symbol.appendChild(fillpattern)
+
+                 # Create the <texturepath> element
+                texturepath = self.doc.createElement("texturepath")
+                texturepath.setAttribute("null", "1")
+                symbol.appendChild(texturepath)
+
+if __name__ == '__main__':
+    print 'Converting mxd........'
+
+    infile = None
+
+    m2q = mxd2qgs(infile)
+
+    # Read input parameters from GP dialog
+    outfile = arcpy.GetParameterAsText(0)
+    m2q.convert(outfile)
+
+    print 'Done'
