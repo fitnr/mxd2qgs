@@ -42,16 +42,6 @@ class mxd2qgs(object):
         # Create the minidom
         self.doc = Document()
 
-        # Create the <qgis> base element
-        self.qgis = self.doc.createElement("qgis")
-        self.qgis.setAttribute("projectname", " ")
-        self.qgis.setAttribute("version", "1.6.0-Capiapo")
-        self.doc.appendChild(self.qgis)
-
-        # Create the <title> element
-        title = self.doc.createElement("title")
-        self.qgis.appendChild(title)
-
         # Dataframe elements
         self.df = arcpy.mapping.ListDataFrames(self.mxd)[0]
 
@@ -59,18 +49,37 @@ class mxd2qgs(object):
         self.lyrlist = arcpy.mapping.ListLayers(self.df)
 
     def convert(self, output):
-        self.map_canvas()
-        self.legend_func()
-        self.project_layers()
+        '''Run conversion and write to a file'''
+        try:
+            # Create the <qgis> base element
+            qgis = self.doc.createElement("qgis")
+            qgis.setAttribute("projectname", " ")
+            qgis.setAttribute("version", "1.6.0-Capiapo")
+            self.doc.appendChild(qgis)
 
-        # Write to qgis file
-        with open(output, "w") as f:
-            f.write(self.doc.toxml())
+            # Create the <title> element
+            title = self.doc.createElement("title")
+            qgis.appendChild(title)
 
-    def map_canvas(self):
-        # Create the <mapcanvas> element
+            canvas = self.canvas()
+            qgis.appendChild(canvas)
+
+            legend = self.legend()
+            qgis.appendChild(legend)
+
+            layers = self.layers()
+            qgis.appendChild(layers)
+
+            # Write to qgis file
+            with open(output, "w") as f:
+                f.write(self.doc.toxml())
+
+        except Exception, e:
+            raise e
+
+    def canvas(self):
+        '''Create the <mapcanvas> element'''
         mapcanvas = self.doc.createElement("mapcanvas")
-        self.qgis.appendChild(mapcanvas)
 
         # Create the <units> element
         unit = self.doc.createTextNode(self.df.mapUnits)
@@ -83,29 +92,24 @@ class mxd2qgs(object):
         extent = self.doc.createElement("extent")
         mapcanvas.appendChild(extent)
 
-        xmin1 = self.doc.createTextNode(str(self.df.extent.XMin))
-        ymin1 = self.doc.createTextNode(str(self.df.extent.YMin))
-        xmax1 = self.doc.createTextNode(str(self.df.extent.XMax))
-        ymax1 = self.doc.createTextNode(str(self.df.extent.YMax))
-
         # Create the <xmin> element
         xmin = self.doc.createElement("xmin")
-        xmin.appendChild(xmin1)
+        xmin.appendChild(self.doc.createTextNode(str(self.df.extent.XMin)))
         extent.appendChild(xmin)
 
         # Create the <ymin> element
         ymin = self.doc.createElement("ymin")
-        ymin.appendChild(ymin1)
+        ymin.appendChild(self.doc.createTextNode(str(self.df.extent.YMin)))
         extent.appendChild(ymin)
 
         # Create the <xmax> element
         xmax = self.doc.createElement("xmax")
-        xmax.appendChild(xmax1)
+        xmax.appendChild(self.doc.createTextNode(str(self.df.extent.XMax)))
         extent.appendChild(xmax)
 
         # Create the <ymax> element
         ymax = self.doc.createElement("ymax")
-        ymax.appendChild(ymax1)
+        ymax.appendChild(self.doc.createTextNode(str(self.df.extent.YMax)))
         extent.appendChild(ymax)
 
         # Create the <projections> element
@@ -120,7 +124,10 @@ class mxd2qgs(object):
         spatialrefsys = self.generate_spatial()
         destinationsrs.appendChild(spatialrefsys)
 
+        return mapcanvas
+
     def generate_spatial(self):
+        '''Generate spatial references for the document or a layer'''
         spatialrefsys = self.doc.createElement("spatialrefsys")
 
         # Create the <proj4> element
@@ -164,14 +171,12 @@ class mxd2qgs(object):
         geographicflag.appendChild(self.doc.createTextNode("true"))
         spatialrefsys.appendChild(geographicflag)
 
-    def legend_func(self):
-
-        # Create the <legend> element
+    def legend(self):
+        '''Create the <legend> element'''
         legend = self.doc.createElement("legend")
-        self.qgis.appendChild(legend)
 
         for lyr in self.lyrlist:
-            if(lyr.isGroupLayer == False):
+            if (lyr.isGroupLayer == False):
 
                 # Create the <legendlayer> element
                 legendlayer = self.doc.createElement("legendlayer")
@@ -194,17 +199,16 @@ class mxd2qgs(object):
                 legendlayerfile.setAttribute("visible", "1")
                 filegroup.appendChild(legendlayerfile)
 
-    def project_layers(self):
-        count1 = str(len(self.lyrlist))
+        return legend
 
-        # Create the <projectlayers> element
-        projectlayers = self.doc.createElement("projectlayers")
-        projectlayers.setAttribute("layercount", count1)
-        self.qgis.appendChild(projectlayers)
+    def layers(self):
+        '''Create the <projectlayers> element'''
+        layers = self.doc.createElement("projectlayers")
+        layers.setAttribute("layercount", str(len(self.lyrlist)))
 
         for lyr in self.lyrlist:
 
-            if(lyr.isGroupLayer == False and lyr.isRasterLayer == False):
+            if (lyr.isGroupLayer == False and lyr.isRasterLayer == False):
                 geometry1 = arcpy.Describe(lyr)
                 geometry2 = str(geometry1.shapeType)
                 ds = self.doc.createTextNode(str(lyr.dataSource))
@@ -227,7 +231,6 @@ class mxd2qgs(object):
 
                 maplayer.setAttribute("hasScaleBasedVisibilityFlag", "0")
                 maplayer.setAttribute("scaleBasedLabelVisibilityFlag", "0")
-                projectlayers.appendChild(maplayer)
 
                 # Create the <id> element
                 _id = self.doc.createElement("id")
@@ -313,29 +316,35 @@ class mxd2qgs(object):
                 outlinestyle.appendChild(outline)
                 symbol.appendChild(outlinestyle)
 
-                 # Create the <outlinewidth> element
+                # Create the <outlinewidth> element
                 outlinewidth = self.doc.createElement("outlinewidth")
                 width = self.doc.createTextNode("0.26")
                 outlinewidth.appendChild(width)
                 symbol.appendChild(outlinewidth)
 
-                 # Create the <fillcolor> element
+                # Create the <fillcolor> element
+                # Todo: correct colors"
                 fillcolor = self.doc.createElement("fillcolor")
                 fillcolor.setAttribute("red", "90")
                 fillcolor.setAttribute("blue", "210")
                 fillcolor.setAttribute("green", "229")
                 symbol.appendChild(fillcolor)
 
-                 # Create the <fillpattern> element
+                # Create the <fillpattern> element
                 fillpattern = self.doc.createElement("fillpattern")
                 fill = self.doc.createTextNode("SolidPattern")
                 fillpattern.appendChild(fill)
                 symbol.appendChild(fillpattern)
 
-                 # Create the <texturepath> element
+                # Create the <texturepath> element
                 texturepath = self.doc.createElement("texturepath")
                 texturepath.setAttribute("null", "1")
                 symbol.appendChild(texturepath)
+
+                # Append to parent
+                layers.appendChild(maplayer)
+
+        return layers
 
 if __name__ == '__main__':
     print 'Converting mxd........'
