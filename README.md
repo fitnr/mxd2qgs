@@ -19,6 +19,6 @@ TK
 
 
 ## Use on the command line
-* Run `python mxd2qgs.py --mxd path/to/file.mxd --qgs /path/to/newfile.qgs`
-
-If you omit the `qgs` argument, the new file will be written to the same path as the old one. For example, `python mxd2qgs.py --mxd path/to/file.mxd` will create `path/to/file.qgs`.
+* Run `python mxd2qgs.py -O path/to/file.mxd # Saves to path/to/file.qgs`
+* Run `python mxd2qgs.py path/to/file.mxd > /path/to/newfile.qgs # outputs to /path/to/newfile.qgs`
+* Run `python mxd2qgs.py path/to/file.mxd --qgs /new/path/newfile.qgs # Saves to /new/path/newfile.qgs`

@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #
 # mxd2qgs
 # Copyright (C) 2011 Allan Maungu, 2014 Neil Freeman
@@ -31,7 +32,6 @@ from datetime import datetime
 from os import path
 import arcpy
 
-
 class mxd2qgs(object):
 
     """Conversion wrapper"""
@@ -42,8 +42,7 @@ class mxd2qgs(object):
         try:
             self.mxd = arcpy.mapping.MapDocument(mxdfile)
         except AssertionError, e:
-            print('error importing', mxdfile)
-            raise e
+            raise AssertionError('error importing' + mxdfile + ': ' + e.message)
 
         # Create the minidom
         self.doc = Document()
@@ -51,7 +50,7 @@ class mxd2qgs(object):
         # Dataframe elements
         self.df = arcpy.mapping.ListDataFrames(self.mxd).pop()
 
-    def convert(self, output):
+    def convert(self):
         '''Run conversion and write to a file'''
         # Create the <qgis> base element
         qgis = self.doc.createElement("qgis")
@@ -72,9 +71,7 @@ class mxd2qgs(object):
         layers = self.layers()
         qgis.appendChild(layers)
 
-        # Write to qgis file
-        with open(output, "w") as f:
-            f.write(self.doc.toxml())
+        return self.doc.toxml()
 
     def canvas(self):
         '''Create the <mapcanvas> element'''
@@ -340,14 +337,14 @@ class mxd2qgs(object):
         # Create the <symbolfieldname> element
         symbol.appendChild(self.doc.createElement("symbolfieldname"))
 
-         # Create the <outlinecolor> element
+        # Create the <outlinecolor> element
         outlinecolor = self.doc.createElement("outlinecolor")
         outlinecolor.setAttribute("red", "88")
         outlinecolor.setAttribute("blue", "99")
         outlinecolor.setAttribute("green", "37")
         symbol.appendChild(outlinecolor)
 
-         # Create the <outlinestyle> element
+        # Create the <outlinestyle> element
         outlinestyle = self.doc.createElement("outlinestyle")
         outline = self.doc.createTextNode("SolidLine")
         outlinestyle.appendChild(outline)
@@ -378,20 +375,45 @@ class mxd2qgs(object):
         texturepath.setAttribute("null", "1")
         symbol.appendChild(texturepath)
 
-if __name__ == '__main__':
-    from optparse import OptionParser
 
-    parser = OptionParser()
-    parser.add_option("-m", "--mxd", dest="mxd", help="input ArcGIS file")
-    parser.add_option("-q", "--qgs", dest="qgs", help="destination QGIS file")
+def main():
+    from optparse import OptionParser
+    import sys
+
+    parser = OptionParser(
+        usage='%prog MXD [options] ',
+        description='Convert an MXD file to QGS format. Requires ArcPy.',
+        epilog='If neither -q or -s are set, file is output to stdout.'
+    )
+
+    parser.add_option('-q', '--qgs', type=str, dest='DEST', help='destination of the new QGIS file')
+    parser.add_option('-s', '--same', action='store_true', help='save a file with a similar name to MXD, but ending in .qgs (ignored if -q is set)')
 
     options, args = parser.parse_args()
 
-    m2q = mxd2qgs(options.mxd)
+    try:
+        m2q = mxd2qgs(args[0])
 
-    # If no --qgs opt is passed, use the same path, just replace the file suffix
-    output = options.qgs or path.join(path.dirname(options.mxd), path.basename(options.mxd)[:-3] + 'qgs')
+        if options.qgs:
+            handle = open(options.qgs, "w")
 
-    m2q.convert(options.qgs)
+        elif options.same:
+            filename = path.join(path.dirname(args[0]), path.basename(args[0])[:-3] + 'qgs')
+            handle = open(filename, "w")
 
-    print 'Converted', options.mxd, 'to', options.qgs
+        else:
+            handle = sys.stdout
+
+        result = m2q.convert()
+
+        # Write to qgis file
+        handle.write(result)
+        handle.close()
+
+    except Exception, e:
+        sys.stderr.write(e.message)
+        sys.exit(1)
+
+
+if __name__ == '__main__':
+    main()
