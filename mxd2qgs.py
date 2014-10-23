@@ -39,6 +39,7 @@ class mxd2qgs(object):
     def __init__(self, mxdfile=None):
         # Assign the input file
         mxdfile = mxdfile or "CURRENT"
+
         try:
             self.mxd = arcpy.mapping.MapDocument(mxdfile)
         except AssertionError, e:
@@ -55,7 +56,7 @@ class mxd2qgs(object):
         # Create the <qgis> base element
         qgis = self.doc.createElement("qgis")
         qgis.setAttribute("projectname", " ")
-        qgis.setAttribute("version", "1.6.0-Capiapo")
+        qgis.setAttribute("version", "2.4.0-Chugiak")
         self.doc.appendChild(qgis)
 
         # Create the <title> element
