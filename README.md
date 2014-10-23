@@ -1,24 +1,54 @@
-# mxd2qgs 
-### Convert ArcGIS .mxd files for QGIS
+# mxd2qgs
+## Convert ArcMap .mxd files to QGIS format
 
-Based on Mxd2Qgs for ArcGIS 10 by Allan Maungu (copyright 2011)
+Based on Mxd2Qgs for ArcGIS 10 by Allan Maungu (copyright 2011).
+The resulting file can be opened in Quantum GIS.
 
-This utility can be installed as a toolbox in ArcGIS, or run on the command line to convert several files at once.
+Converts [ArcMAP](http://www.esri.com/software/arcgis) mxd files for use in [QGIS](http://qgis.com).
 
-Note that because of the limits of scripting in ArcGIS, layer symbologies are lost in the conversion
+This utility can be installed as a toolbox in ArcGIS, or run on the command line. Note that because of the limits of scripting in ArcGIS, layer symbologies are lost in the conversion.
 
-### Installing in ArcGIS
-Not yet ready for download, under active development.
-TK
+Requirements: ArcMap 10 or higher.
 
-### Use as a Toolbox Script
+Tested on ArcMap 10, Python 2.6.5 and Quantum GIS 1.6.0.
 
-1. Once layers are loaded on an ArcMap document, double click "ArcMap to Quantum GIS"
-2. Specify name (with .qgs extension) and location of desired QGIS file and click OK.  
-3. Open the resulting QGIS file.
+## Installing
 
+There are several options for installing this software.
 
-## Use on the command line
-* Run `python mxd2qgs.py -O path/to/file.mxd # Saves to path/to/file.qgs`
-* Run `python mxd2qgs.py path/to/file.mxd > /path/to/newfile.qgs # outputs to /path/to/newfile.qgs`
-* Run `python mxd2qgs.py path/to/file.mxd --qgs /new/path/newfile.qgs # Saves to /new/path/newfile.qgs`
+### As a toolbox
+
+**Not yet ready for download, under active development.**
+
+[Download the zip archive](https://github.com/fitnr/mxd2qgs/archive/master.zip) and install it. [Add the toolbox in ArcMap](http://webhelp.esri.com/arcgisdesktop/9.3/index.cfm?TopicName=Basic_toolbox_management). Converting is as simple as entering the desired path for the new QGIS file.
+
+### With pip
+
+Run `pip install mxd2qgs`. The mxd2qgs tool will be available on the command line.
+
+### Build from source
+
+Download or clone this package, and run `python setup.py install`.
+
+You can also just download the package and use the as a python library. Prefix the below commands with `python `.
+
+## Using the command line tool
+
+By default, the converter outputs to stdout because I read on some UNIX website that was the cool thing to do.
+
+```bash
+# Saves to /path/to/newfile.qgs
+mxd2qgs.py path/to/file.mxd > /path/to/newfile.qgs
+
+# Use the --same or -s flag to save with same filename, but a different extension
+# Saves to path/to/file.qgs
+mxd2qgs.py --same path/to/file.mxd
+
+# Specify a new path
+# Saves to /new/path/save.qgs`
+mxd2qgs.py path/to/file.mxd --qgs /new/path/save.qgs
+````
+
+## License
+
+This software is licensed under the [GNU General Public License, version 2](http://www.gnu.org/licenses/gpl-2.0.html).
