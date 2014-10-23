@@ -24,6 +24,7 @@
 
 from xml.dom.minidom import Document
 from datetime import datetime
+from random import randint
 from os import linesep, path
 import arcpy
 
@@ -44,7 +45,11 @@ class mxd2qgs(object):
         self.doc = Document()
 
         # Dataframe elements
-        self.df = arcpy.mapping.ListDataFrames(self.mxd).pop()
+        dfs = arcpy.mapping.ListDataFrames(self.mxd)
+        self.df = dfs.pop(0)
+
+        # All the layers in all the data frames go in the layer list
+        self.layerlist = [y for f in dfs for y in arcpy.mapping.ListLayers(f)]
 
     def convert(self):
         '''Run conversion and write to a file'''
@@ -61,11 +66,15 @@ class mxd2qgs(object):
         canvas = self.canvas()
         qgis.appendChild(canvas)
 
-        legend = self.legend()
-        qgis.appendChild(legend)
+        # Make sure layers have a unique ID
+        assign_lyrids(self.layerlist)
 
         layers = self.layers()
         qgis.appendChild(layers)
+
+        legend = self.legend()
+        qgis.appendChild(legend)
+
         # ArcPy documentation is quite insistent about deleting file references
         # Maybe something is wrong with their garbage collection?
         del(self.mxd)
@@ -173,7 +182,7 @@ class mxd2qgs(object):
         '''Create the <legend> element'''
         legend = self.doc.createElement("legend")
 
-        for lyr in arcpy.mapping.ListLayers(self.df):
+        for lyr in self.layerlist:
             if (lyr.isGroupLayer == False):
 
                 # Create the <legendlayer> element
@@ -193,7 +202,8 @@ class mxd2qgs(object):
                 # Create the <legendlayerfile> element
                 legendlayerfile = self.doc.createElement("legendlayerfile")
                 legendlayerfile.setAttribute("isInOverview", "0")
-                legendlayerfile.setAttribute("layerid", str(lyr.name) + str(20110427170816078))
+
+                legendlayerfile.setAttribute("layerid", lyr.mxd2qgs_id)
                 legendlayerfile.setAttribute("visible", "1")
                 filegroup.appendChild(legendlayerfile)
 
@@ -215,15 +225,14 @@ class mxd2qgs(object):
 
     def layers(self):
         '''Create the <projectlayers> element'''
-        layerlist = arcpy.mapping.ListLayers(self.df)
         layers = self.doc.createElement("projectlayers")
-        layers.setAttribute("layercount", str(len(layerlist)))
+        layers.setAttribute("layercount", str(len(self.layerlist)))
 
         # Layer order - create parent and a tracking list for nesting layers
         layertree = self.doc.createElement('layer-tree-group')
         treeDict = {'': layertree}
 
-        for lyr in layerlist:
+        for lyr in self.layerlist:
             name = str(lyr.name)
             parent_name = path.basename(path.dirname(lyr.longName))
 
@@ -242,13 +251,12 @@ class mxd2qgs(object):
                 maplayer.setAttribute("maxLabelScale", "1e+08")
 
                 # Create the <id> element
-                # Use date to microsecond to produce unique id, as in QGIS
                 _id = self.doc.createElement("id")
-                _id.appendChild(self.doc.createTextNode(name + str(datetime.now().strftime('%Y%m%d%H%M%S%f'))))
+                _id.appendChild(self.doc.createTextNode(lyr.mxd2qgs_id))
                 maplayer.appendChild(_id)
 
                 treeLayer = self.setlayerprop(lyr, 'layer-tree-layer')
-                treeLayer.setAttribute('id', _id)
+                treeLayer.setAttribute('id', lyr.mxd2qgs_id)
 
                 if(lyr.isRasterLayer == True):
                     maplayer.setAttribute("type", "raster")
@@ -374,6 +382,12 @@ class mxd2qgs(object):
         texturepath = self.doc.createElement("texturepath")
         texturepath.setAttribute("null", "1")
         symbol.appendChild(texturepath)
+
+def assign_lyrids(layerlist):
+    '''QGIS uses a unique ID for each layer, assign it here'''
+    for lyr in layerlist:
+        # Mimic the datetime down to ms, but use a randint because looping is too fast
+        lyr.mxd2qgs_id = '{0}{1}{2}'.format(lyr.name, datetime.now().strftime('%Y%m%d%H%M%S'), randint(100000, 999999))
 
 def main():
     from optparse import OptionParser
