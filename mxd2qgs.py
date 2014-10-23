@@ -71,6 +71,9 @@ class mxd2qgs(object):
 
         layers = self.layers()
         qgis.appendChild(layers)
+        # ArcPy documentation is quite insistent about deleting file references
+        # Maybe something is wrong with their garbage collection?
+        del(self.mxd)
 
         return self.doc.toxml()
 
