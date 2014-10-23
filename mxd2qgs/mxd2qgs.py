@@ -223,6 +223,79 @@ class mxd2qgs(object):
 
         return tree
 
+    def maplayer(self, layer):
+        # Create the <maplayer> element
+        maplayer = self.doc.createElement("maplayer")
+        maplayer.setAttribute("minimumScale", "0")
+        maplayer.setAttribute("maximumScale", "1e+08")
+        maplayer.setAttribute("minLabelScale", "0")
+        maplayer.setAttribute("maxLabelScale", "1e+08")
+
+        # Create the <id> element
+        _id = self.doc.createElement("id")
+        _id.appendChild(self.doc.createTextNode(layer.mxd2qgs_id))
+        maplayer.appendChild(_id)
+
+        # Create the <datasource> element
+        datasource = self.doc.createElement("datasource")
+        datasource.appendChild(self.doc.createTextNode(layer.dataSource))
+        maplayer.appendChild(datasource)
+
+        if(layer.isRasterLayer == True):
+            maplayer.setAttribute("type", "raster")
+            pipe = self.doc.createElement('pipe')
+            rr = self.doc.createElement('rasterrenderer')
+            rr.setAttribute('opacity', layer.transparency / 100.0)
+            pipe.appendChild(rr)
+            maplayer.appendChild(pipe)
+
+        else:  # Is Vector
+            geotype = str(arcpy.Describe(layer).shapeType)
+            maplayer.setAttribute("geometry", geotype)
+            maplayer.setAttribute("type", "vector")
+
+        maplayer.setAttribute("hasScaleBasedVisibilityFlag", "0")
+        maplayer.setAttribute("scaleBasedLabelVisibilityFlag", "0")
+
+        # Create the <layername> element
+        layername = self.doc.createElement("layername")
+        layername.appendChild(self.doc.createTextNode(layer.name))
+        maplayer.appendChild(layername)
+
+        # Create the <srs> element
+        srs = self.doc.createElement("srs")
+        maplayer.appendChild(srs)
+
+        spatialrefsys = self.generate_spatial()
+        srs.appendChild(spatialrefsys)
+
+        # Create the <transparencyLevelInt> element
+        transparencyLevelInt = self.doc.createElement("transparencyLevelInt")
+        transparencyLevelInt.appendChild(self.doc.createTextNode("255"))
+        maplayer.appendChild(transparencyLevelInt)
+
+        # Create the <customproperties> element
+        customproperties = self.doc.createElement("customproperties")
+        maplayer.appendChild(customproperties)
+
+        # Create the <provider> element
+        provider = self.doc.createElement("provider")
+        provider.setAttribute("encoding", "System")
+        ogr = self.doc.createTextNode("ogr")
+        provider.appendChild(ogr)
+        maplayer.appendChild(provider)
+
+        # Create the <singlesymbol> element
+        singlesymbol = self.doc.createElement("singlesymbol")
+
+        # Create the <symbol> element
+        symbol = self.symbol()
+        singlesymbol.appendChild(symbol)
+
+        maplayer.appendChild(singlesymbol)
+
+        return maplayer
+
     def layers(self):
         '''Create the <projectlayers> element'''
         layers = self.doc.createElement("projectlayers")
@@ -241,81 +314,10 @@ class mxd2qgs(object):
                 treeDict[name] = treeLayer
 
             else:
-                ds = self.doc.createTextNode(str(lyr.dataSource))
-
-                # Create the <maplayer> element
-                maplayer = self.doc.createElement("maplayer")
-                maplayer.setAttribute("minimumScale", "0")
-                maplayer.setAttribute("maximumScale", "1e+08")
-                maplayer.setAttribute("minLabelScale", "0")
-                maplayer.setAttribute("maxLabelScale", "1e+08")
-
-                # Create the <id> element
-                _id = self.doc.createElement("id")
-                _id.appendChild(self.doc.createTextNode(lyr.mxd2qgs_id))
-                maplayer.appendChild(_id)
-
                 treeLayer = self.setlayerprop(lyr, 'layer-tree-layer')
                 treeLayer.setAttribute('id', lyr.mxd2qgs_id)
+                maplayer = self.maplayer(lyr)
 
-                if(lyr.isRasterLayer == True):
-                    maplayer.setAttribute("type", "raster")
-                    pipe = self.doc.createElement('pipe')
-                    rr = self.doc.createElement('rasterrenderer')
-                    rr.setAttribute('opacity', lyr.transparency / 100.0)
-                    pipe.appendChild(rr)
-                    maplayer.appendChild(pipe)
-
-                else:  # Is Vector
-                    geotype = str(arcpy.Describe(lyr).shapeType)
-                    maplayer.setAttribute("geometry", geotype)
-                    maplayer.setAttribute("type", "vector")
-
-                maplayer.setAttribute("hasScaleBasedVisibilityFlag", "0")
-                maplayer.setAttribute("scaleBasedLabelVisibilityFlag", "0")
-
-                # Create the <datasource> element
-                datasource = self.doc.createElement("datasource")
-                datasource.appendChild(ds)
-                maplayer.appendChild(datasource)
-
-                # Create the <layername> element
-                layername = self.doc.createElement("layername")
-                layername.appendChild(self.doc.createTextNode(name))
-                maplayer.appendChild(layername)
-
-                # Create the <srs> element
-                srs = self.doc.createElement("srs")
-                maplayer.appendChild(srs)
-
-                spatialrefsys = self.generate_spatial()
-                srs.appendChild(spatialrefsys)
-
-                # Create the <transparencyLevelInt> element
-                transparencyLevelInt = self.doc.createElement("transparencyLevelInt")
-                transparencyLevelInt.appendChild(self.doc.createTextNode("255"))
-                maplayer.appendChild(transparencyLevelInt)
-
-                # Create the <customproperties> element
-                customproperties = self.doc.createElement("customproperties")
-                maplayer.appendChild(customproperties)
-
-                # Create the <provider> element
-                provider = self.doc.createElement("provider")
-                provider.setAttribute("encoding", "System")
-                ogr = self.doc.createTextNode("ogr")
-                provider.appendChild(ogr)
-                maplayer.appendChild(provider)
-
-                # Create the <singlesymbol> element
-                singlesymbol = self.doc.createElement("singlesymbol")
-                maplayer.appendChild(singlesymbol)
-
-                # Create the <symbol> element
-                symbol = self.symbol()
-                singlesymbol.appendChild(symbol)
-
-                # Append to parent
                 layers.appendChild(maplayer)
 
             layertree[parent_name].appendChild(treeLayer)
