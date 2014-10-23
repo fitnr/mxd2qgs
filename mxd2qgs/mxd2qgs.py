@@ -1,13 +1,10 @@
 #!/usr/bin/env python
 #
 # mxd2qgs
-# Copyright (C) 2011 Allan Maungu, 2014 Neil Freeman
 # https://github.com/fitnr/mxd2qgs
 # Converts ArcMap documents to .qgs format
-# The resulting file can be opened in Quantum GIS
-# Tested on ArcMap 10, Python 2.6.5 and Quantum GIS 1.6.0
-#
-#-----------------------------------------------------------
+
+# Copyright (c) 2014 Neil Freeman, except for portions (c) 2011 Allan Maungu
 #
 # licensed under the terms of GNU GPL 2
 #
@@ -24,8 +21,6 @@
 # You should have received a copy of the GNU General Public License along
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-#
-#---------------------------------------------------------------------
 
 from xml.dom.minidom import Document
 from datetime import datetime

@@ -1,5 +1,8 @@
-#-----------------------------------------------------------
-#
+# mxd2qgs_arc_script
+# https://github.com/fitnr/mxd2qgs
+# This file is for use in a ArcMap toolbox
+
+# copyright (c) 2014 Neil Freeman, except for portions copyright (c) 2011 Allan Maungu
 # licensed under the terms of GNU GPL 2
 #
 # This program is free software; you can redistribute it and/or modify
@@ -15,8 +18,6 @@
 # You should have received a copy of the GNU General Public License along
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-#
-#---------------------------------------------------------------------
 
 from mxd2qgs import mxd2qgs
 import arcpy
