@@ -2,7 +2,7 @@
 # https://github.com/fitnr/mxd2qgs
 # This file is for use in a ArcMap toolbox
 
-# copyright (c) 2014 Neil Freeman, except for portions copyright (c) 2011 Allan Maungu
+# Copyright (c) 2014 Neil Freeman, except for portions (c) 2011 Allan Maungu
 # licensed under the terms of GNU GPL 2
 #
 # This program is free software; you can redistribute it and/or modify
@@ -19,11 +19,27 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-from mxd2qgs import mxd2qgs
+from mxd2qgs.mxd2qgs import mxd2qgs
+import sys
 import arcpy
 
-print 'Converting mxd........'
-converter = mxd2qgs("CURRENT")
-outfile = arcpy.GetParameterAsText(0)
-converter.convert(outfile)
-print 'Done'
+print 'Converting mxd to qgs'
+
+try:
+    converter = mxd2qgs("CURRENT")
+
+except Exception, e:
+    print 'Error reading mxd file: ' + e.message
+    sys.exit(1)
+
+try:
+    with open(arcpy.GetParameterAsText(0), 'wb') as handle:
+        qgs = converter.convert()
+        handle.write(qgs)
+
+except Exception, e:
+    print 'Error saving qgs file: '+ e.message
+    sys.exit(1)
+
+print 'Done: QGS file saved to ' + arcpy.GetParameterAsText(0)
+sys.exit(0)
