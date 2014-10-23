@@ -34,20 +34,32 @@ You can also just download the package and use the as a python library. Prefix t
 
 ## Using the command line tool
 
-By default, the converter outputs to stdout because I read on some UNIX website that was the cool thing to do.
-
 ```bash
-# Saves to /path/to/newfile.qgs
-mxd2qgs.py path/to/file.mxd > /path/to/newfile.qgs
+# convert with the same file name, differet extension
+mxd2qgs.py path/to/file.mxd
+# save to path/to/file.qgs
 
-# Use the --same or -s flag to save with same filename, but a different extension
-# Saves to path/to/file.qgs
-mxd2qgs.py --same path/to/file.mxd
+# convert several files
+mxd2qgs.py path/to/file2.mxd foo/file.mxd bar/file.mxd
+# save to path/to/file2.qgs, foo/file.qgs, bar/file.qgs, respectively
 
-# Specify a new path
-# Saves to /new/path/save.qgs`
-mxd2qgs.py path/to/file.mxd --qgs /new/path/save.qgs
+# specify a completely new path or file name
+mxd2qgs.py path/to/file.mxd --qgs new/path/name.qgs
+# saves to new/path/name.qgs
+
+# If the input for `--qgs` doesn't end in '.qgs' the converter assumes you're giving a path
+mxd2qgs.py path/to/file.mxd --qgs new/path
+# saves to new/path/file.qgs
+
+mxd2qgs.py path/to/file.mxd path/to/file2.mxd --qgs new/path
+# saves to new/path/file.qgs and new/path/file2.qgs, respectively
+
+# Output to stdout
+mxd2qgs.py -o path/to/file.mxd
+# [long xml output clipped]
 ````
+
+By default, the converter outputs to stdout because I read on some UNIX website that was the cool thing to do.
 
 ## License
 

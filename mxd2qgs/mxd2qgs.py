@@ -71,7 +71,7 @@ class mxd2qgs(object):
         del(self.mxd)
 
         # xml.dom.minidom.Document can't handle the !doctype
-        return "<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>" + linesep + self.doc.toxml()
+        return "<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>" + self.doc.toxml()
 
     def canvas(self):
         '''Create the <mapcanvas> element'''
@@ -375,43 +375,68 @@ class mxd2qgs(object):
         texturepath.setAttribute("null", "1")
         symbol.appendChild(texturepath)
 
-
 def main():
     from optparse import OptionParser
     import sys
 
     parser = OptionParser(
-        usage='%prog MXD [options] ',
-        description='Convert an MXD file to QGS format. Requires ArcPy.',
-        epilog='If neither -q or -s are set, file is output to stdout.'
+        usage='%prog [options] MXD [MXD ...]',
+        description='Convert an MXD file to QGS format. Requires ArcPy.'
     )
 
-    parser.add_option('-q', '--qgs', type=str, dest='DEST', help='destination of the new QGIS file')
-    parser.add_option('-s', '--same', action='store_true', help='save a file with a similar name to MXD, but ending in .qgs (ignored if -q is set)')
+    parser.add_option('-q', '--qgs', type=str, dest='path', help='destination directory of the new QGIS file (or exact file name only one argument is sent)')
+    parser.add_option('-o', '--stdout', action='store_true', help='output to stdout (ignored if -q is set)')
 
     options, args = parser.parse_args()
 
+    qgs_outdir, qgs_outfile = False, False
+
     try:
-        m2q = mxd2qgs(args[0])
+        # Set output directories (and sometimes paths)
+        if len(args) == 0:
+            raise RuntimeError("Missing input file")
 
-        if options.qgs:
-            handle = open(options.qgs, "w")
+        if options.path:
+            # Only got one argument and it ends in qgs:
+            # Offer to use a full path with a filename, or just a directory
+            if len(args) == 1 and options.path[-4:] == '.qgs':
 
-        elif options.same:
-            filename = path.join(path.dirname(args[0]), path.basename(args[0])[:-3] + 'qgs')
-            handle = open(filename, "w")
+                if path.exists(options.path):
+                    raise RuntimeError("File already exists: {0}".format(options.path))
 
-        else:
-            handle = sys.stdout
+                qgs_outdir = path.dirname(options.path)
+                qgs_outfile = path.basename(options.path)
 
-        result = m2q.convert()
+            else:
+                qgs_outdir = options.path
 
-        # Write to qgis file
-        handle.write(result)
-        handle.close()
+            if not path.exists(qgs_outdir):
+                raise RuntimeError("Output path doesn't exist")
 
-    except Exception, e:
-        sys.stderr.write(e.message)
+        elif options.stdout:
+            std_out_flag = True            
+
+        # Conversion loop
+        for inputfile in args:
+            result = mxd2qgs(inputfile).convert()
+
+            if std_out_flag:
+                sys.stdout.write(result + linesep)
+
+            else:
+                outdir = qgs_outdir or path.dirname(inputfile)
+                outfile = qgs_outfile or path.basename(inputfile)[:-3] + 'qgs'
+
+                outputpath = path.join(outdir, outfile)
+
+                if path.exists(outputpath):
+                    raise RuntimeError("File already exists: {0}".format(outputpath))
+
+                with open(outputpath, 'wb') as handle:
+                    handle.write(result)
+
+    except Exception as e:
+        sys.stderr.write(repr(e))
         sys.exit(1)
 
 
