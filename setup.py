@@ -1,5 +1,13 @@
 from setuptools import setup
 
+# This is hacky and terrible, but since arcpy doesn't live in site-packages,
+# probably the only option 
+try:
+    import arcpy
+except:
+    print "Couldn't find arcpy."
+    exit(1)
+
 setup(
     name='mxd2qgs',
     version='0.1.0',
@@ -23,7 +31,7 @@ setup(
     ],
 
     packages=['mxd2qgs'],
-    install_requires=['arcpy'],
+
     entry_points={
         'console_scripts': [
             'mxd2qgs=mxd2qgs.mxd2qgs:main',
