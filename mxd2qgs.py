@@ -29,7 +29,7 @@
 
 from xml.dom.minidom import Document
 from datetime import datetime
-from os import path
+from os import linesep, path
 import arcpy
 
 class mxd2qgs(object):
@@ -75,7 +75,8 @@ class mxd2qgs(object):
         # Maybe something is wrong with their garbage collection?
         del(self.mxd)
 
-        return self.doc.toxml()
+        # xml.dom.minidom.Document can't handle the !doctype
+        return "<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>" + linesep + self.doc.toxml()
 
     def canvas(self):
         '''Create the <mapcanvas> element'''
