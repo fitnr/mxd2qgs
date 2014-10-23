@@ -6,7 +6,13 @@ The resulting file can be opened in Quantum GIS.
 
 Converts [ArcMAP](http://www.esri.com/software/arcgis) mxd files for use in [QGIS](http://qgis.com).
 
-This utility can be installed as a toolbox in ArcGIS, or run on the command line. Note that because of the limits of scripting in ArcGIS, layer symbologies are lost in the conversion.
+This utility can be installed as a toolbox in ArcGIS, or run on the command line.
+
+## Limitations
+Because of the shortcomings of the ArcGIS api, and the differences between ArcMap and QGIS, the converter has some limitations:
+* layer symbologies are lost in the conversion.
+* QGIS lacks Data Frames. All of the layers from each Data Frame in the mxd document will be addded, but the spatial settings from only one ArcMap Data Frame (generally the first) will be converted.
+* Proprietary ESRI formats (e.g. sdc) won't work in QGIS.
 
 Requirements: ArcMap 10 or higher.
 
