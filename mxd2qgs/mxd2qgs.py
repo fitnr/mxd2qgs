@@ -63,13 +63,17 @@ class mxd2qgs(object):
         title = self.doc.createElement("title")
         qgis.appendChild(title)
 
+        layertree, layer_tree_canvas = self.layertrees()
+        qgis.appendChild(layertree)
+        qgis.appendChild(layer_tree_canvas)
+
         canvas = self.canvas()
         qgis.appendChild(canvas)
 
         # Make sure layers have a unique ID
         assign_lyrids(self.layerlist)
 
-        layers = self.layers()
+        layers = self.projectlayers()
         qgis.appendChild(layers)
 
         legend = self.legend()
@@ -209,19 +213,56 @@ class mxd2qgs(object):
 
         return legend
 
-    def setlayerprop(self, layer, treeElemName):
+    def maketree(self, layer, treeElemName):
         tree = self.doc.createElement(treeElemName)
+        props = self.doc.createElement('customproperties')
+        tree.appendChild(props)
+
+        tree.setAttribute('id', layer.mxd2qgs_id)
+        tree.setAttribute('name', layer.name)
 
         if layer.supports('visible'):
-            if layer.visible:
-                checked = 'Qt::Checked'
-            else:
-                checked = 'Qt::Unchecked'
-
+            checked = 'Qt::Checked' if layer.visible else 'Qt::Unchecked'
             tree.setAttribute('checked', checked)
-            tree.setAttribute('name', str(layer.name))
 
         return tree
+
+    def layertrees(self):
+        '''Create the <layer-tree-group> and <layer-tree-canvas> elements'''
+        layer_tree_canvas = self.doc.createElement('layer-tree-canvas')
+        custom_order = self.doc.createElement('custom-order')
+        custom_order.setAttribute('enabled', '0')
+        layer_tree_canvas.appendChild(custom_order)
+
+        # top level tree is expanded, checked & unnamed
+        layer_tree = self.doc.createElement('layer-tree-group')
+        layer_tree.setAttribute("expanded", "1")
+        layer_tree.setAttribute("checked", "Qt::Checked")
+        layer_tree.setAttribute("name", "")
+
+        # tracking dict for nesting layers,
+        # populated with the parent tree-group
+        treeDict = {u'': layer_tree}
+
+        for layer in self.layerlist:
+            # '' if longName == name
+            parent_name = path.basename(path.dirname(layer.longName))
+
+            if layer.isGroupLayer:
+                treeLayer = self.maketree(layer, 'layer-tree-group')
+                treeDict[layer.name] = treeLayer
+
+            else:
+                treeLayer = self.maketree(layer, 'layer-tree-layer')
+                treeLayer.setAttribute('id', layer.mxd2qgs_id)
+
+                custom_order_item = self.doc.createElement('item')
+                custom_order_item.appendChild(self.doc.createTextNode(layer.mxd2qgs_id))
+                custom_order.appendChild(custom_order_item)
+
+            layer_tree[parent_name].appendChild(treeLayer)
+
+        return layer_tree, layer_tree_canvas
 
     def maplayer(self, layer):
         # Create the <maplayer> element
@@ -256,6 +297,10 @@ class mxd2qgs(object):
 
         maplayer.setAttribute("hasScaleBasedVisibilityFlag", "0")
         maplayer.setAttribute("scaleBasedLabelVisibilityFlag", "0")
+        maplayer.setAttribute("simplifyDrawingHints", "1")
+        maplayer.setAttribute("simplifyDrawingTol", "1")
+        maplayer.setAttribute("geometry", "Polygon")
+        maplayer.setAttribute("simplifyMaxScale", "1")
 
         # Create the <layername> element
         layername = self.doc.createElement("layername")
@@ -264,19 +309,12 @@ class mxd2qgs(object):
 
         # Create the <srs> element
         srs = self.doc.createElement("srs")
+        srs.appendChild(self.generate_spatial())
         maplayer.appendChild(srs)
 
-        spatialrefsys = self.generate_spatial()
-        srs.appendChild(spatialrefsys)
-
-        # Create the <transparencyLevelInt> element
-        transparencyLevelInt = self.doc.createElement("transparencyLevelInt")
-        transparencyLevelInt.appendChild(self.doc.createTextNode("255"))
-        maplayer.appendChild(transparencyLevelInt)
-
         # Create the <customproperties> element
-        customproperties = self.doc.createElement("customproperties")
-        maplayer.appendChild(customproperties)
+        # commented out because it's needless
+        # maplayer.appendChild(self.doc.createElement("customproperties"))
 
         # Create the <provider> element
         provider = self.doc.createElement("provider")
@@ -296,31 +334,15 @@ class mxd2qgs(object):
 
         return maplayer
 
-    def layers(self):
+    def projectlayers(self):
         '''Create the <projectlayers> element'''
         layers = self.doc.createElement("projectlayers")
         layers.setAttribute("layercount", str(len(self.layerlist)))
 
-        # Layer order - create parent and a tracking list for nesting layers
-        layertree = self.doc.createElement('layer-tree-group')
-        treeDict = {'': layertree}
-
-        for lyr in self.layerlist:
-            name = str(lyr.name)
-            parent_name = path.basename(path.dirname(lyr.longName))
-
-            if lyr.isGroupLayer:
-                treeLayer = self.setlayerprop(lyr, 'layer-tree-group')
-                treeDict[name] = treeLayer
-
-            else:
-                treeLayer = self.setlayerprop(lyr, 'layer-tree-layer')
-                treeLayer.setAttribute('id', lyr.mxd2qgs_id)
-                maplayer = self.maplayer(lyr)
-
+        for layer in self.layerlist:
+            if not layer.isGroupLayer:
+                maplayer = self.maplayer(layer)
                 layers.appendChild(maplayer)
-
-            layertree[parent_name].appendChild(treeLayer)
 
         return layers
 
