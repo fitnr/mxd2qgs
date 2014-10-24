@@ -32,6 +32,23 @@ class mxd2qgs(object):
 
     """Conversion wrapper"""
 
+    color = None
+
+    geo_attrs = {
+        'Point': {
+            'class': "SimpleMarker",
+            'type': 'marker',
+        },
+        'Polyline': {
+            'class': "SimpleLine",
+            'type': 'line',
+        },
+        'Polygon': {
+            'class': "SimpleFill",
+            'type': 'fill',
+        },
+    }
+
     def __init__(self, mxdfile=None):
         # Assign the input file
         mxdfile = mxdfile or "CURRENT"
@@ -51,8 +68,20 @@ class mxd2qgs(object):
         # All the layers in all the data frames go in the layer list
         self.layerlist = [y for f in dfs for y in arcpy.mapping.ListLayers(f)]
 
+        # Create a color generator
+        self.color = colorgen()
+
+        # Add method helpers
+        self.geo_attrs['Point']['properties'] = self.symbol_props_line
+        self.geo_attrs['Polyline']['properties'] = self.symbol_props_line
+        self.geo_attrs['Polygon']['properties'] = self.symbol_props_polygon
+
+
     def convert(self):
         '''Run conversion and write to a file'''
+        # Give layers a unique ID
+        assign_lyrids(self.layerlist)
+
         # Create the <qgis> base element
         qgis = self.doc.createElement("qgis")
         qgis.setAttribute("projectname", " ")
@@ -69,9 +98,6 @@ class mxd2qgs(object):
 
         canvas = self.canvas()
         qgis.appendChild(canvas)
-
-        # Make sure layers have a unique ID
-        assign_lyrids(self.layerlist)
 
         layers = self.projectlayers()
         qgis.appendChild(layers)
@@ -193,7 +219,7 @@ class mxd2qgs(object):
                 legendlayer = self.doc.createElement("legendlayer")
                 legendlayer.setAttribute("open", "true")
                 legendlayer.setAttribute("checked", "Qt::Checked")
-                legendlayer.setAttribute("name", str(lyr.name))
+                legendlayer.setAttribute("name", lyr.name)
 
                 legend.appendChild(legendlayer)
 
@@ -245,7 +271,8 @@ class mxd2qgs(object):
         treeDict = {u'': layer_tree}
 
         for layer in self.layerlist:
-            # '' if longName == name
+            # longName looks like Group1\Group2\layer.name,
+            # so dirname -> '' if layer.longName == layer.name
             parent_name = path.basename(path.dirname(layer.longName))
 
             if layer.isGroupLayer:
@@ -260,7 +287,7 @@ class mxd2qgs(object):
                 custom_order_item.appendChild(self.doc.createTextNode(layer.mxd2qgs_id))
                 custom_order.appendChild(custom_order_item)
 
-            layer_tree[parent_name].appendChild(treeLayer)
+            treeDict[parent_name].appendChild(treeLayer)
 
         return layer_tree, layer_tree_canvas
 
@@ -283,6 +310,7 @@ class mxd2qgs(object):
         maplayer.appendChild(datasource)
 
         if(layer.isRasterLayer == True):
+            layer.geotype = 'raster'
             maplayer.setAttribute("type", "raster")
             pipe = self.doc.createElement('pipe')
             rr = self.doc.createElement('rasterrenderer')
@@ -291,16 +319,20 @@ class mxd2qgs(object):
             maplayer.appendChild(pipe)
 
         else:  # Is Vector
-            geotype = str(arcpy.Describe(layer).shapeType)
-            maplayer.setAttribute("geometry", geotype)
+            layer.geotype = arcpy.Describe(layer).shapeType
+            maplayer.setAttribute("geometry", layer.geotype)
             maplayer.setAttribute("type", "vector")
+
+            maplayer.setAttribute("simplifyDrawingHints", "1")
+            maplayer.setAttribute("simplifyDrawingTol", "1")
+            maplayer.setAttribute("simplifyMaxScale", "1")
+
+            # Create the <renderer-v2> element
+            renderer = self.symbol(layer)
+            maplayer.appendChild(renderer)
 
         maplayer.setAttribute("hasScaleBasedVisibilityFlag", "0")
         maplayer.setAttribute("scaleBasedLabelVisibilityFlag", "0")
-        maplayer.setAttribute("simplifyDrawingHints", "1")
-        maplayer.setAttribute("simplifyDrawingTol", "1")
-        maplayer.setAttribute("geometry", "Polygon")
-        maplayer.setAttribute("simplifyMaxScale", "1")
 
         # Create the <layername> element
         layername = self.doc.createElement("layername")
@@ -319,18 +351,8 @@ class mxd2qgs(object):
         # Create the <provider> element
         provider = self.doc.createElement("provider")
         provider.setAttribute("encoding", "System")
-        ogr = self.doc.createTextNode("ogr")
-        provider.appendChild(ogr)
+        provider.appendChild(self.doc.createTextNode("ogr"))
         maplayer.appendChild(provider)
-
-        # Create the <singlesymbol> element
-        singlesymbol = self.doc.createElement("singlesymbol")
-
-        # Create the <symbol> element
-        symbol = self.symbol()
-        singlesymbol.appendChild(symbol)
-
-        maplayer.appendChild(singlesymbol)
 
         return maplayer
 
@@ -346,72 +368,140 @@ class mxd2qgs(object):
 
         return layers
 
-    def symbol(self):
+    def symbol_props_point(self):
+        '''Return symbol properties for point layers'''
+        return {
+            'angle': '0',
+            'color_border': next(self.color),
+            'horizontal_anchor_point': '1',
+            'name': 'circle',
+            'offset_map_unit_scale': '0,0',
+            'offset': '0,0',
+            'offset_unit': "MM",
+            'outline_style': "solid",
+            'outline_width': "0",
+            'outline_width_map_unit_scale': "0,0",
+            'outline_width_unit': "MM",
+            'scale_method': "area",
+            'size': "2",
+            'size_map_unit_scale': "0,0",
+            'size_unit': "MM",
+            'vertical_anchor_point': "1",
+        }
+
+    def symbol_props_line(self):
+        '''Return symbol properties for polyline layers'''
+        return {
+            'capstyle': "square",
+            'color': next(self.color),
+            'customdash': "5;2",
+            'customdash_map_unit_scale': "0,0",
+            'customdash_unit': "MM",
+            'draw_inside_polygon': "0",
+            'joinstyle': "bevel",
+            'offset': "0",
+            'offset_map_unit_scale': "0,0",
+            'offset_unit': "MM",
+            'penstyle': "solid",
+            'use_custom_dash': "0",
+            'width': "0.26",
+            'width_map_unit_scale': "0,0",
+            'width_unit': "MM",
+        }
+
+    def symbol_props_polygon(self):
+        '''Return symbol properties for polygon layers'''
+        # border is a neutral gray, for simplicity
+        return {
+            'border_width_map_unit_scale': "0,0",
+            'border_width_unit': "MM",
+            'color': next(self.color),
+            'color_border': "144,164,172,255",
+            'joinstyle': "bevel",
+            'offset': "0,0",
+            'offset_map_unit_scale': "0,0",
+            'offset_unit': "MM",
+            'style': "solid",
+            'style_border': "solid",
+            'width_border': "0.5",
+        }
+
+    def symbol(self, layer):
         '''Create and populate a dummy symbol element'''
+        # <renderer-v2 symbollevels="0" type="singleSymbol">
+        #     <symbols>
+        #         <symbol alpha="0.537255" type="fill" name="0">
+        #             <prop k="border_width_map_unit_scale" v="0,0"/>
+        #             ...
+        #     <rotation/>
+        #     <sizescale scalemethod="area"/>
+        renderer = self.doc.createElement('renderer-v2')
+        renderer.setAttribute('symbollevels', '0')
+        renderer.setAttribute('type', 'singleSymbol')
+
+        symbols = self.doc.createElement("symbols")
+        renderer.appendChild(symbols)
+
         symbol = self.doc.createElement("symbol")
-        # Create the <lowervalue> element
-        symbol.appendChild(self.doc.createElement("lowervalue"))
+        symbols.appendChild(symbol)
 
-        # Create the <uppervalue> element
-        symbol.appendChild(self.doc.createElement("uppervalue"))
+        # point, polyline, or polygon?
+        geo_attrs = self.geo_attrs[layer.geotype]
 
-        # Create the <label> element
-        symbol.appendChild(self.doc.createElement("label"))
+        symbol.setAttribute('alpha', str(transp_to_alpha(layer.transparency)))
+        symbol.setAttribute('type', geo_attrs['type'])
+        symbol.setAttribute('name', '0')
 
-        # Create the <rotationclassificationfieldname> element
-        rotationclassificationfieldname = self.doc.createElement("rotationclassificationfieldname")
-        symbol.appendChild(rotationclassificationfieldname)
+        # Create appropriate symbol
+        symbol_layer = self.doc.createElement('layer')
+        symbol_layer.setAttribute('class', geo_attrs['class'])
+        symbol_layer.setAttribute('pass', '0')
+        symbol_layer.setAttribute('locked', '0')
 
-        # Create the <scaleclassificationfieldname> element
-        scaleclassificationfieldname = self.doc.createElement("scaleclassificationfieldname")
-        symbol.appendChild(scaleclassificationfieldname)
+        for key, value in geo_attrs['properties']().items():
+            prop = self.doc.createElement('prop')
+            prop.setAttribute('k', key)
+            prop.setAttribute('v', value)
+            symbol_layer.appendChild(prop)
 
-        # Create the <symbolfieldname> element
-        symbol.appendChild(self.doc.createElement("symbolfieldname"))
+        symbol.appendChild(symbol_layer)
 
-        # Create the <outlinecolor> element
-        outlinecolor = self.doc.createElement("outlinecolor")
-        outlinecolor.setAttribute("red", "88")
-        outlinecolor.setAttribute("blue", "99")
-        outlinecolor.setAttribute("green", "37")
-        symbol.appendChild(outlinecolor)
+        renderer.appendChild(self.doc.createElement("rotation"))
 
-        # Create the <outlinestyle> element
-        outlinestyle = self.doc.createElement("outlinestyle")
-        outline = self.doc.createTextNode("SolidLine")
-        outlinestyle.appendChild(outline)
-        symbol.appendChild(outlinestyle)
+        sizescale = self.doc.createElement("sizescale")
+        sizescale.setAttribute('scalemethod', 'area')
 
-        # Create the <outlinewidth> element
-        outlinewidth = self.doc.createElement("outlinewidth")
-        width = self.doc.createTextNode("0.26")
-        outlinewidth.appendChild(width)
-        symbol.appendChild(outlinewidth)
-
-        # Create the <fillcolor> element
-        # Todo: correct colors"
-        fillcolor = self.doc.createElement("fillcolor")
-        fillcolor.setAttribute("red", "90")
-        fillcolor.setAttribute("blue", "210")
-        fillcolor.setAttribute("green", "229")
-        symbol.appendChild(fillcolor)
-
-        # Create the <fillpattern> element
-        fillpattern = self.doc.createElement("fillpattern")
-        fill = self.doc.createTextNode("SolidPattern")
-        fillpattern.appendChild(fill)
-        symbol.appendChild(fillpattern)
-
-        # Create the <texturepath> element
-        texturepath = self.doc.createElement("texturepath")
-        texturepath.setAttribute("null", "1")
-        symbol.appendChild(texturepath)
+        return renderer
 
 def assign_lyrids(layerlist):
     '''QGIS uses a unique ID for each layer, assign it here'''
     for lyr in layerlist:
         # Mimic the datetime down to ms, but use a randint because looping is too fast
         lyr.mxd2qgs_id = '{0}{1}{2}'.format(lyr.name, datetime.now().strftime('%Y%m%d%H%M%S'), randint(100000, 999999))
+
+
+def colorgen(alpha=255):
+    '''Generator that eternally loops through a list of lovely matched lighter/darker colors '''
+    # List of colors is adapted from http://colorbrewer2.org
+    colors = [
+        (166, 206, 227), (31, 120, 180), (178, 223, 138), (51, 160, 44),
+        (251, 154, 153), (227, 26, 28), (253, 191, 111), (255, 127, 0),
+        (202, 178, 214), (106, 61, 154), (255, 255, 153), (177, 89, 40),
+        (141, 211, 199), (255, 255, 179), (190, 186, 218), (251, 128, 114),
+        (128, 177, 211), (253, 180, 98), (179, 222, 105), (252, 205, 229),
+        (217, 217, 217), (188, 128, 189), (204, 235, 197), (255, 237, 111)
+    ]
+
+    while True:
+        item = colors.pop(0)
+        out = '{0},{1},{2},{alpha}'.format(*item, alpha=alpha)
+        yield out
+        colors.append(item)
+
+
+def transp_to_alpha(transparency, in_max=100, out_max=1):
+    return out_max * (1 - transparency / float(in_max))
+
 
 def main():
     from optparse import OptionParser
