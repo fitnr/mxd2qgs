@@ -28,6 +28,7 @@ from random import randint
 from os import linesep, path
 import arcpy
 
+
 class mxd2qgs(object):
 
     """Conversion wrapper"""
@@ -75,7 +76,6 @@ class mxd2qgs(object):
         self.geo_attrs['Point']['properties'] = self.symbol_props_line
         self.geo_attrs['Polyline']['properties'] = self.symbol_props_line
         self.geo_attrs['Polygon']['properties'] = self.symbol_props_polygon
-
 
     def convert(self):
         '''Run conversion and write to a file'''
@@ -214,7 +214,6 @@ class mxd2qgs(object):
 
         for lyr in self.layerlist:
             if (lyr.isGroupLayer == False):
-
                 # Create the <legendlayer> element
                 legendlayer = self.doc.createElement("legendlayer")
                 legendlayer.setAttribute("open", "true")
@@ -309,7 +308,7 @@ class mxd2qgs(object):
         datasource.appendChild(self.doc.createTextNode(layer.dataSource))
         maplayer.appendChild(datasource)
 
-        if(layer.isRasterLayer == True):
+        if (layer.isRasterLayer == True):
             layer.geotype = 'raster'
             maplayer.setAttribute("type", "raster")
             pipe = self.doc.createElement('pipe')
@@ -473,6 +472,7 @@ class mxd2qgs(object):
 
         return renderer
 
+
 def assign_lyrids(layerlist):
     '''QGIS uses a unique ID for each layer, assign it here'''
     for lyr in layerlist:
@@ -517,7 +517,7 @@ def main():
 
     options, args = parser.parse_args()
 
-    qgs_outdir, qgs_outfile = False, False
+    qgs_outdir, qgs_outfile, std_out_flag = False, False, False
 
     try:
         # Set output directories (and sometimes paths)
@@ -542,7 +542,7 @@ def main():
                 raise RuntimeError("Output path doesn't exist")
 
         elif options.stdout:
-            std_out_flag = True            
+            std_out_flag = True
 
         # Conversion loop
         for inputfile in args:
@@ -564,7 +564,7 @@ def main():
                     handle.write(result)
 
     except Exception as e:
-        sys.stderr.write(repr(e))
+        sys.stderr.write(str(e))
         sys.exit(1)
 
 
