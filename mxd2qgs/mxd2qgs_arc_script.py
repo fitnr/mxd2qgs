@@ -19,14 +19,14 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-from mxd2qgs.mxd2qgs import mxd2qgs
+import mxd2qgs
 import sys
 import arcpy
 
 print 'Converting mxd to qgs'
 
 try:
-    converter = mxd2qgs("CURRENT")
+    converter = mxd2qgs.mxd2qgs("CURRENT")
 
 except Exception, e:
     print 'Error reading mxd file: ' + e.message
@@ -42,4 +42,3 @@ except Exception, e:
     sys.exit(1)
 
 print 'Done: QGS file saved to ' + arcpy.GetParameterAsText(0)
-sys.exit(0)
