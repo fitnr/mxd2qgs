@@ -50,6 +50,8 @@ class mxd2qgs(object):
         },
     }
 
+    target_path = None
+
     def __init__(self, mxdfile=None):
         # Assign the input file
         mxdfile = mxdfile or "CURRENT"
@@ -77,8 +79,12 @@ class mxd2qgs(object):
         self.geo_attrs['Polyline']['properties'] = self.symbol_props_line
         self.geo_attrs['Polygon']['properties'] = self.symbol_props_polygon
 
-    def convert(self):
+    def convert(self, target_path=None):
         '''Run conversion and write to a file'''
+
+        if target_path:
+            self.target_path = path.abspath(target_path)
+
         # Give layers a unique ID
         assign_lyrids(self.layerlist)
 
@@ -303,9 +309,21 @@ class mxd2qgs(object):
         _id.appendChild(self.doc.createTextNode(layer.mxd2qgs_id))
         maplayer.appendChild(_id)
 
+        # Set relative path
+        # self.target_path: (full path to qgs target directory)
+        # C:/path/to/new/file.qgs
+        # datasource (full path to SHP)
+        # C:/path/to/directory/file.shp
+        #
+        # New relative path should be: ../directory/file.shp
+        if self.target_path:
+            data_path = path.relpath(layer.dataSource, self.target_path)
+        else:
+            data_path = layer.dataSource
+
         # Create the <datasource> element
         datasource = self.doc.createElement("datasource")
-        datasource.appendChild(self.doc.createTextNode(layer.dataSource))
+        datasource.appendChild(self.doc.createTextNode(data_path))
         maplayer.appendChild(datasource)
 
         if (layer.isRasterLayer == True):
@@ -361,7 +379,7 @@ class mxd2qgs(object):
         layers.setAttribute("layercount", str(len(self.layerlist)))
 
         for layer in self.layerlist:
-            if not layer.isGroupLayer:
+            if not layer.isGroupLayer and layer.supports('dataSource'):
                 maplayer = self.maplayer(layer)
                 layers.appendChild(maplayer)
 
@@ -546,10 +564,10 @@ def main():
 
         # Conversion loop
         for inputfile in args:
-            result = mxd2qgs(inputfile).convert()
+            m2q = mxd2qgs(inputfile)
 
             if std_out_flag:
-                sys.stdout.write(result + linesep)
+                sys.stdout.write(m2q.convert() + linesep)
 
             else:
                 outdir = qgs_outdir or path.dirname(inputfile)
@@ -559,6 +577,8 @@ def main():
 
                 if path.exists(outputpath):
                     raise RuntimeError("File already exists: {0}".format(outputpath))
+
+                result = m2q.convert(target_path=qgs_outdir)
 
                 with open(outputpath, 'wb') as handle:
                     handle.write(result)
