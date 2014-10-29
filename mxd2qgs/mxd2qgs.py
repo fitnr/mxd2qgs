@@ -68,8 +68,8 @@ class mxd2qgs(object):
         dfs = arcpy.mapping.ListDataFrames(self.mxd)
         self.df = dfs.pop(0)
 
-        # All the layers in all the data frames go in the layer list
-        self.layerlist = [y for f in dfs for y in arcpy.mapping.ListLayers(f)]
+        # Layers
+        self.layerlist = arcpy.mapping.ListLayers(self.mxd)
 
         # Create a color generator
         self.color = colorgen()
