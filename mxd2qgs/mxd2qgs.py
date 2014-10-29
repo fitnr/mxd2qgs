@@ -71,6 +71,9 @@ class mxd2qgs(object):
         # All the layers in all the data frames go in the layer list
         self.layerlist = [y for f in dfs for y in arcpy.mapping.ListLayers(f)]
 
+        # Works on 10.2
+        # self.layerlist = arcpy.mapping.ListLayers(self.mxd)
+
         # Create a color generator
         self.color = colorgen()
 
@@ -116,7 +119,8 @@ class mxd2qgs(object):
         del(self.mxd)
 
         # xml.dom.minidom.Document can't handle the !doctype
-        return "<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>" + self.doc.toxml()
+        # manually remove <?xml> encoding
+        return "<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>" + self.doc.toxml().replace('<?xml version="1.0" ?>', '')
 
     def canvas(self):
         '''Create the <mapcanvas> element'''
