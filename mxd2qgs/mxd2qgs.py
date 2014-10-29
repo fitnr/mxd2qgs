@@ -116,7 +116,8 @@ class mxd2qgs(object):
         del(self.mxd)
 
         # xml.dom.minidom.Document can't handle the !doctype
-        return "<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>" + self.doc.toxml()
+        # manually remove <?xml> encoding
+        return "<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>" + self.doc.toxml().replace('<?xml version="1.0" ?>', '')
 
     def canvas(self):
         '''Create the <mapcanvas> element'''
