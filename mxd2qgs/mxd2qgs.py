@@ -59,7 +59,7 @@ class mxd2qgs(object):
         try:
             self.mxd = arcpy.mapping.MapDocument(mxdfile)
         except AssertionError, e:
-            raise AssertionError('error importing' + mxdfile + ': ' + e.message)
+            raise AssertionError('Error importing {f}: {e}'.format(f=mxdfile, e=str(e)))
 
         # Create the minidom
         self.doc = Document()
@@ -530,7 +530,7 @@ def main():
         description='Convert an MXD file to QGS format. Requires ArcPy.'
     )
 
-    parser.add_option('-q', '--qgs', type=str, dest='path', help='destination directory of the new QGIS file (or exact file name only one argument is sent)')
+    parser.add_option('-q', '--qgs', type=str, dest='path', help='destination directory of the new QGIS file (or exact file name if only one mxd file is given)')
     parser.add_option('-o', '--stdout', action='store_true', help='output to stdout (ignored if -q is set)')
 
     options, args = parser.parse_args()
@@ -552,6 +552,9 @@ def main():
 
                 qgs_outdir = path.dirname(options.path)
                 qgs_outfile = path.basename(options.path)
+
+                if not path.exists(qgs_outdir):
+                    raise RuntimeError("Folder doesn't exist: {0}".format(qgs_outdir))
 
             else:
                 qgs_outdir = options.path
